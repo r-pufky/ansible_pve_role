@@ -1,0 +1,52 @@
+---
+###############################################################################
+# Deploy Cloud Init SSH Keys
+###############################################################################
+# Cloud init defines sshkeys in configuration to use on the initial KVM boot,
+# However these keys, if added directly to the pve_kvm config, fail to execute
+# when turning up as the actual proxmox backend command (qm) executing the
+# start from the command line fails due to invalid urlencoding:
+#
+# vm 251 - unable to parse value of 'sshkeys' - invalid urlencoded string: ...
+#
+# Even filtering the data (with |urlencode) fails, as '/' is not URL encorded
+# in the string.
+#
+# https://github.com/pallets/jinja/issues/515
+# https://github.com/Telmate/terraform-provider-proxmox/issues/133
+#
+# Instead, we write the public key to a know temporary location, and import it
+# directly to the VM using the 'qm' command directly. We adjust comparision
+# of conf files by removing this line from the diff evaluation.
+#
+# Args:
+#   pve_cloud_init_meta: dict Metadata settings for cloud init KVM machines.
+#   pve_cloud_init_network: dict Network settings for cloud init KVM machines.
+#   pve_cloud_init_user: dict User settings for cloud init KVM machines.
+#   pve_cloud_init_vendor: dict Vendor settings for cloud init KVM machines.
+#
+# Reference:
+# * https://cloudinit.readthedocs.io/en/latest/index.html
+
+- name: '{{ _pve_vm.vmid }} create | stage ssh keys'
+  ansible.builtin.template:
+    src:   'file.template.j2'
+    dest:  '/tmp/{{ _pve_vm.vmid }}.ssh.key'
+    force: true
+    owner: 'root'
+    group: 'root'
+    mode:  0640
+  vars:
+    file_contents: '{{ _pve_vm.ssh_keys }}'
+
+- name: '{{ _pve_vm.vmid }} create | import ssh keys' # noqa no-changed-when always execute
+  ansible.builtin.command: 'qm set {{ _pve_vm.vmid }} --sshkeys /tmp/{{ _pve_vm.vmid }}.ssh.key'
+  delegate_to: '{{ _pve_vm.node }}'
+
+- name: '{{ _pve_vm.vmid }} create | cleanup ssh keys' # noqa ignore-errors ok if missing
+  ansible.builtin.file:
+    path:  '/tmp/{{ _pve_vm.vmid }}.ssh.key'
+    state: 'absent'
+  changed_when: false
+  ignore_errors: true
+  delegate_to: '{{ _pve_vm.node }}'

@@ -1,0 +1,62 @@
+---
+###############################################################################
+# Reconfigure KVM Instance
+###############################################################################
+# Assumes the vm has already been stopped.
+#
+# Cloudinit root disk (scsi0) is not mounted until the new config is
+# transferred to the machine; run disk operations after new config is loaded.
+#
+# In PVE 7.0, setting the serial console to a non-default setting (serial0)
+# will result in a boot loop.
+#
+# /etc/pve uses pmxcfs (a database mounted via fuse). It's POSIX like, but does
+# not support specific operations. This causes:
+# * Temp files from ansible to fail as it crosses filesystem boundaries
+#   (ansible creates a temp file then attempts an atomic move; fails across
+#    filesystems).
+# * Permissions are auto-applied based on path; no need to set user/group/perms
+#   on files in /etc/pve.
+# * A Quorate MUST exist to enable writes (auto sync'ed to rest of cluster).
+#
+# Exit codes:
+#   0: qm set success.
+#   5: qm set volume already exists.
+#
+# Args:
+#   _pve_vm: dict kvm_config parse options.
+#
+# Reference:
+# * https://pve.proxmox.com/pve-docs/chapter-pmxcfs.html
+# * https://forum.proxmox.com/threads/unable-to-modify-anything-under-etc-pve.10284/
+# * https://pve.proxmox.com/pve-docs/pve-admin-guide.html
+# * https://pve.proxmox.com/pve-docs/qm.1.html
+# * https://forum.proxmox.com/threads/pve-7-0-all-vms-with-cloud-init-seabios-fail-during-boot-process-bootloop-disk-not-found.97310/page-2
+
+# mv preserves permissions (not allowed on pmxcfs). cp & rm instead.
+- name: '{{ _pve_vm.vmid }} | apply configuration changes' # noqa no-changed-when always execute
+  ansible.builtin.shell: 'cp /tmp/kvm.conf /etc/pve/qemu-server/{{ _pve_vm.vmid }}.conf && rm /tmp/kvm.conf'
+  delegate_to: '{{ _pve_vm.node }}'
+
+- ansible.builtin.include_tasks: interfaces/create_disk.yml
+  vars:
+    disk: '{{ item }}'
+  loop: '{{ _pve_vm.disks }}'
+  when: _pve_vm.disks|length > 0
+
+- ansible.builtin.include_tasks: interfaces/create_iso.yml
+  vars:
+    iso: '{{ item }}'
+  loop: '{{ _pve_vm.isos }}'
+  when: _pve_vm.isos|length > 0
+
+#- ansible.builtin.include_tasks: cloud_init/ssh_keys.yml
+#  when: _pve_vm.cloud_init|length > 0
+
+# Cannot remount the disk if it is already mounted;
+- name: '{{ _pve_vm.vmid }} | mount cloudinit settings on {{ _pve_vm.cloud_init.mountpoint }}'
+  ansible.builtin.command: 'qm set {{ _pve_vm.vmid }} --{{ _pve_vm.cloud_init.mountpoint }} {{ _pve_vm.cloud_init.storage }}:cloudinit'
+  register: _pve_cloud_init_results
+  failed_when: _pve_cloud_init_results.rc not in (0, 5)
+  delegate_to: '{{ _pve_vm.node }}'
+  when: _pve_vm.cloud_init|length > 0

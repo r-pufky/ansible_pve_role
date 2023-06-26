@@ -1,0 +1,15 @@
+---
+###############################################################################
+# Configure PVE Root User
+###############################################################################
+# The PVE root password is needed to ensure later cluster creation commands in
+# this role work during provisioning.
+
+- name: 'provision | set pve root account password'
+  ansible.builtin.user:
+    name:            'root'
+    password:        '{{ pve_root_password }}'
+    update_password: 'always'
+    expires:         -1
+    state:           'present'
+  no_log: true # user password

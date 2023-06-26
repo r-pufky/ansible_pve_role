@@ -1,0 +1,31 @@
+---
+###############################################################################
+# Check Cluster Quorum (Global)
+###############################################################################
+# Assert cluster quorum exists.
+#
+# Run task on cluster node.
+#
+# Raises:
+#   fail: Task will hard fail with message if no quorum exists.
+#
+# Reference:
+# * https://pve.proxmox.com/pve-docs/pvecm.1.html
+# * https://pve.proxmox.com/pve-docs/pve-admin-guide.html
+
+- name: 'global task | check for cluster quorum'
+  ansible.builtin.shell: 'set -o pipefail && pvecm status | grep "Quorate:\s*Yes"'
+  args:
+    executable: '/bin/bash'
+  changed_when: false
+  register: _pve_quorum
+
+- name: 'global task | no quorum reached'
+  ansible.builtin.fail:
+    msg: |
+      No Quorum has been reached. Cannot make cluster changes. Cluster must be
+      setup with 'pve/provision' before executing cluster commands.
+      See: roles/pve/provision/tasks/main.yml
+
+      https://forum.proxmox.com/threads/unable-to-modify-anything-under-etc-pve.10284/
+  when: _pve_quorum.rc != 0

@@ -1,0 +1,24 @@
+---
+###############################################################################
+# Resize LXC Container Disk
+###############################################################################
+# Use 'pct resize' to resize a containers disk.
+#
+# Exit codes captured:
+#   0: resize succeeded
+#   255: no resize needed
+#
+# Args:
+#   _pve_vm: dict kvm_config parse options.
+#   disk: string name of disk (sata0, scsi0, etc).
+#   size: string size of disk.
+#
+# Reference:
+# * https://pve.proxmox.com/pve-docs/pct.1.html
+# * https://pve.proxmox.com/pve-docs/pve-admin-guide.html
+
+- name: '{{ _pve_vm.vmid }} | resizing disk {{ disk }}' # noqa no-changed-when always execute
+  ansible.builtin.command: 'pct resize {{ _pve_vm.vmid }} {{ disk }} {{ size }}'
+  register: _pve_resize
+  failed_when: _pve_resize.rc not in (0, 255)
+  delegate_to: '{{ _pve_vm.node }}'

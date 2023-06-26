@@ -1,0 +1,52 @@
+[OPTIONS]
+
+enable: {{ _pve_vm.firewall.enable|default(false)|int }}
+dhcp: {{ _pve_vm.firewall.dhcp|default(true)|int }}
+ipfilter: {{ _pve_vm.firewall.ipfilter|default(false)|int }}
+log_level_in: {{ _pve_vm.firewall.log_level_in|default('nolog')|lower }}
+log_level_out: {{ _pve_vm.firewall.log_level_out|default('nolog')|lower }}
+macfilter: {{ _pve_vm.firewall.macfilter|default(true)|int }}
+ndp: {{ _pve_vm.firewall.ndp|default(true)|int }}
+policy_in: {{ _pve_vm.firewall.policy_in|default('DROP')|upper }}
+policy_out: {{ _pve_vm.firewall.policy_out|default('ACCEPT')|upper }}
+radv: {{ _pve_vm.firewall.radv|default(false)|int }}
+
+{% if _pve_vm.firewall.rules|default([])|length > 0 %}
+[RULES]
+{% for rule in _pve_vm.firewall.rules %}
+
+{{- rule.direction|default('in')|upper }}
+{%- if rule.macro is defined %} {{ rule.macro }}({{ rule.action|default('ACCEPT') }}) {% else %} {{ rule.action|default('ACCEPT') }} {% endif %}
+{%- if rule.source is defined %}-source {{ rule.source }} {% endif %}
+{%- if rule.sport is defined %}-sport {{ rule.sport }} {% endif %}
+{%- if rule.dest is defined %}-dest {{ rule.dest }} {% endif %}
+{%- if rule.dport is defined %}-dport {{ rule.dport }} {% endif %}
+{%- if rule.proto is defined %}-p {{ rule.proto }} {% endif %}
+{%- if rule.log is defined %}-log {{ rule.log|lower }} {% endif %}
+{%- if rule.icmp_type is defined %}-icmp-tcpe {{ rule.icmp_type }} {% endif %}
+{%- if rule.iface is defined %}-i {{ rule.iface }} {% endif %}
+{%- if rule.comment is defined %}# {{ rule.comment }} {% endif %}
+
+{% endfor %}
+{% endif %}
+
+{% if _pve_vm.firewall.ipset|default([])|length > 0 %}
+{% for set in _pve_vm.firewall.ipset %}
+[IPSET {{ set.name }}] {% if set.comment is defined %}# {{ set.comment }} {% endif %}
+
+{% for host in set.hosts %}
+{{ host.ip }} {% if host.comment is defined %}# {{ host.comment }} {% endif %}
+
+{% endfor %}
+
+{% endfor %}
+{% endif %}
+
+{% if _pve_vm.firewall.ip_aliases|default([])|length > 0 %}
+[ALIASES]
+
+{% for host in _pve_vm.firewall.ip_aliases %}
+{{ host.name }} {{ host.ip }} {% if host.comment is defined %}# {{ host.comment }} {% endif %}
+
+{% endfor %}
+{% endif %}

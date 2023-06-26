@@ -1,0 +1,355 @@
+---
+###############################################################################
+# Proxmox (PVE) Role Configuration
+###############################################################################
+# All options are required unless stated otherwise.
+#
+# Definitions:
+# * [var source, role stage]: variable/section headers informing where to
+#    define custom settings and what role stages those variables are applied.
+#    * group_vars: apply variables to a 'set' of hosts (typically all cluster
+#        nodes) instead of a single host.
+#    * host_vars: apply variables to a specific host. Used for node
+#        customization or container definitions.
+# * datacenter: policy definitions that apply to a cluster.
+# * cluster: a defined set of physical PVE cluster nodes.
+# * node: a physical machine in a PVE cluster.
+# * container: LXC or KVM instances running on PVE.
+#
+# Other default files:
+# * cluster.yml: Low-level cluster and cluster node configuration including
+#     IP, naming, master definitions.
+# * datacenter.yml: Datacenter site options affecting a configured cluster.
+# * firewall.yml: Firewall definitions for the datacenter site and Individual
+#     cluster nodes.
+# * lxc.yml: LXC container definition and firewall configuration template. Use
+#     one per host in host_vars.
+# * kvm.yml: KVM container definition and firewall configuration template. Use
+#     one per host in host_vars.
+# * cloud_init.yml: Cloudinit default metadata to use for KVM containers.
+
+###############################################################################
+# Root Password [group_vars, pve/provision]
+###############################################################################
+# Root account password. This is required to create the cluster, modify cluster
+# nodes and execute commands. Required.
+#
+# Datatype: string (default: random 32 character password)
+# Special case: Sensitive material, use vault.
+pve_root_password: '{{ lookup("password", "/dev/null chars=ascii_lowercase,ascii_uppercase,digits length=32") }}'
+
+###############################################################################
+# Root Email [group_vars, pve/cluster]
+###############################################################################
+# Root email address for notifications. Highly suggest switching from a public
+# email account used to setup PVE to a localhost address to prevent massive
+# spam increase to that account due to loosely configured postfix instance
+# running out-of-box for PVE nodes. Optional.
+#
+# Datatype: string (default: 'root@localhost')
+# Special case: None
+pve_root_email: 'root@localhost'
+
+###############################################################################
+# Networking Interfaces [host_vars, pve/provision|pve/cluster]
+###############################################################################
+# Deterministically manage cluster node networking. Node will be rebooted
+# automatically on a configuration change, which occurs during provisioning or
+# clustering management. Same format as /etc/network/interfaces.
+#
+# Example:
+#   pve_interfaces: |
+#     auto lo
+#     iface lo inet loopback
+#
+#     iface eno1 inet dhcp
+#
+# Datatype: string (default: '')
+# Special case: '' (disables management of interfaces file)
+#
+# Reference:
+# * https://wiki.debian.org/NetworkConfiguration
+# * https://manpages.org/etc-network-interfaces/5
+pve_interfaces: ''
+
+###############################################################################
+# DNS Settings [group_vars, pve/provision|pve/cluster]
+###############################################################################
+# Deterministically manage cluster node DNS resolution. Node will be rebooted
+# automatically on a configuration change, which occurs during provisioning or
+# or cluster management. Same format as /etc/resolv.conf. Required.
+#
+# Example:
+#   pve_dns: |
+#     search example.com
+#     nameserver 1.1.1.1
+#     nameserver 1.0.0.1
+#
+# Datatype: string (default: '')
+# Special case: '' (disables management of resolv.conf file)
+#
+# Reference:
+# * https://wiki.debian.org/resolv.conf
+# * https://manpages.org/resolvconf/5
+pve_dns: ''
+
+###############################################################################
+# PVE Upgrades [group_vars, pve/provision]
+###############################################################################
+# Attempt dist-upgrade during provisioning. Non-subscription repositories will
+# automatically get new PVE major releases as previews. Production repositories
+# (subscriptions) will not automatically get new PVE major releases. Required.
+#
+# NOTE: 'apt upgrade' and 'unattended-upgrades' should **NEVER** be used to
+#       upgrade/update PVE servers, only 'dist-upgrade'.
+#
+# Datatype: boolean (default: true)
+# Special case: None
+#
+# Reference:
+# * Reference: https://pve.proxmox.com/pve-docs/chapter-sysadmin.html
+pve_dist_upgrade: true
+
+# Nvidia driver version to use; partial versions may be used (automatically
+# globbed at the end). Recommend specifying the major version and using the
+# built in globbing for minor version updates. Containers using the passthru
+# should use the same version as the node host. Required.
+#
+# NOTE: If the nvidia-smi check fails when executing the role, the version
+#       specified is no longer available upstream, use a newer version.
+#
+# Datatype: string (default: '470')
+# Special case: None
+pve_nvidia_driver: '470'
+
+###############################################################################
+# PVE Subscription Management [group_vars, pve/provision|pve/cluster]
+###############################################################################
+# Subscription keys for each cluster node. Subscription (enterprise) repository
+# use requires a valid unique key for each cluster node at the same level; with
+# access to https://shop.proxmox.com to validate. Required.
+#
+# A subscription is **NOT** required to use Proxmox. Keys may be purchased
+# here: https://shop.proxmox.com/index.php?rp=/login
+#
+# WARNING: Specifying keys will **ENABLE** the subscription repo. Not
+#          specifying subscription keys will remove them and enable the
+#          non-subscription repo. Otherwise role will fail to apply as apt will
+#          halt on invalid subscription.
+#
+# Example:
+#   pve_subscription_keys:
+#     'cluster_node1.example.com': 'unique key'
+#     'cluster_node2.example.com': 'unique key'
+#     'cluster_node3.example.com': 'unique key'
+#
+# Datatype: dict (default: {} (non-subscription))
+# Special case: Sensitive material. Use vault.
+#   - {CLUSTER NODE INVENTORY HOSTNAME}: string subscription key.
+pve_subscription_keys: {}
+
+###############################################################################
+# PVE Subscription Notification [group_vars, pve/provision]
+###############################################################################
+# Disable subscription pop-up notifications in WebUI for non-subscription
+# installs. Installs the latest debian package from pve-fake-subscription.
+# Required.
+#
+# NOTE: Do **NOT** click the 'check' button on the subscription page. It will
+# invalidate the cache and temporary revert your instance into an unlicensed
+# status, temporarily prompting the notification again.
+#
+# Dataype: boolean (default: true)
+# Special case: None
+#
+# Reference:
+# * https://github.com/Jamesits/pve-fake-subscription
+pve_remove_subscription_notification: true
+
+###############################################################################
+# Install Fail2ban Rules [group_vars, pve/provision]
+###############################################################################
+# Install custom PVE fail2ban rules to /etc/fail2ban/{jail,filter}.d during
+# cluster provisioning. Adds ban definitions for WebUI and SSH login failures
+# for default endpoints (8006, 22). Intended for environments with little site
+# customization and fast, secure turnup. Fail2ban must be managed by another
+# role. Required.
+#
+# Datatype: boolean (default: false)
+# Special case: None
+pve_install_fail2ban_rules: false
+
+###############################################################################
+# Container Image Templates [group_vars, pve/lxc|pve/kvm]
+###############################################################################
+# Images are automatically downloaded and installed on appropriate node as
+# needed to 'local' volume for container turnup using the defined key name in
+# the pve_{kvm,lxc}.template setting (e.g. debian-bullseye). Images in the
+# container definition will automatically be downloaded using url sources.
+# Required.
+#
+# TODO(pve 8.0+): Remove SHA1 note on bookworm release.
+# Only SHA1 is portable to all platforms/python versions by default. An
+# additional library 'hashlib' maybe be required for Python versions < 3.11.
+#
+# Reference:
+# * https://packages.debian.org/search?searchon=contents&keywords=hashlib.py
+#
+# Template Formats:
+#   LXC Templates:
+#     key:   string custom template name, e.g. 'debian-buster'.
+#     value: dict
+#       url:       template name from 'pveam update && pveam available'.
+#       checksum:  empty string. PVE automatically validates.
+#       algorithm: empty string. PVE automatically validates.
+#
+#   Cloutinit Disk:
+#     key:   string custom template name, e.g. 'debian-cloudinit'.
+#     value: dict
+#       url:       string url to cloudinit image.
+#       checksum:  string checksum.
+#       algorithm: string checksum algorithm (sha1, sha512, etc).
+#
+#   ISO Images:
+#     key:   string iso file name, e.g. 'debian-11.1.0-amd64-netinst'.
+#     value: dict
+#       url:       string url to iso image.
+#       checksum:  string checksum.
+#       algorithm: string checksum algorithm (sha1, sha512, etc).
+#
+# Datatype: dict (default: see below)
+#   {LABEL}:
+#     key:   string
+#     value: dict
+#       url:       string
+#       checksum:  string
+#       algorithm: string
+# Special case: None
+pve_image_map:
+  debian-bullseye:
+    url: 'debian-11-standard_11.7-1_amd64.tar.zst'
+    checksum:  ''
+    algorithm: ''
+  debian-11.1.0-amd64-netinst:
+    url: 'https://cdimage.debian.org/debian-cd/current/amd64/iso-cd/debian-11.1.0-amd64-netinst.iso'
+    checksum:  '02257c3ec27e45d9f022c181a69b59da67e5c72871cdb4f9a69db323a1fad58093f2e69702d29aa98f5f65e920e0b970d816475a5a936e1f3bf33832257b7e92'
+    algorithm: 'sha512'
+  proxmox-virtio-win:
+    url: 'https://fedorapeople.org/groups/virt/virtio-win/direct-downloads/archive-virtio/virtio-win-0.1.208-1/virtio-win-0.1.208.iso'
+    checksum:  'f5b223b9b2c67530b34d7231f90d89b35d8a01bd3a8c874bbb2e282140ebc1e7b99dbf954a0a72238b64ba6aacd60526dcc505b2cb30bfa07787d152a08c27aa'
+    algorithm: 'sha512'
+  debian-bullseye-cloudinit-qcow2:
+    url:  'https://cloud.debian.org/cdimage/cloud/bullseye/20211011-792/debian-11-genericcloud-amd64-20211011-792.qcow2'
+    checksum:  'cf93045a4abae87ed3512cbefb293457b11db2c88975ba7852e5a2fb2e06b403b1a1838736bc3bb55958f7226228f5e763da4544b1a8d1d4d7b1063ce5b08d59'
+    algorithm: 'sha512'
+  debian-bullseye-cloudinit-xz:
+    url:  'https://cloud.debian.org/cdimage/cloud/bullseye/20211011-792/debian-11-genericcloud-amd64-20211011-792.tar.xz'
+    checksum:  'ded2dc24ebb876d741ee80bd1e5edba34e32eaded73e2b90820792700c81d512b68a28bae929c8a377b5ec8995b053990616199f5214d07f81fd8603b32e66ce'
+    algorithm: 'sha512'
+
+###############################################################################
+# Container Shutdown / Restart Timeouts [group_vars, pve/lxc|pve/kvm]
+###############################################################################
+# How container shutdown and (re)starts are handled during role application.
+# These should be defined in group_vars for all containers and specifically
+# overridden on a per-host basis in host_vars.
+
+# KVM shutdown timeout in seconds. Required.
+# Datatype: integer (default: 30)
+# Special case: None
+pve_kvm_shutdown_timeout: 30
+
+# KVM (re)start timeout in seconds. Required.
+# Datatype: integer (default: 30)
+# Special case: None
+pve_kvm_start_timeout:    30
+
+# KVM reset on kernel panic (disk resize). Some OS's will kernel panic on the
+# next boot after a disk resize. This will reset the machine during the next
+# boot (only after a resize operation) to ensure the KVM instance turns up.
+# Required.
+#
+# Datatype: boolean (default: true)
+# Special case: None
+#
+# Reference:
+# * https://forum.proxmox.com/threads/kernel-panic-after-resizing-a-clone.93738/
+pve_kvm_disk_resize_panic_reset: true
+
+# LXC shutdown timeout in seconds. Required.
+# Datatype: integer (default: 30)
+# Special case: None
+pve_lxc_shutdown_timeout: 30
+
+# LXC (re)start timeount in seconds. Required.
+# Datatype: integer (default: 30)
+# Special case: None
+pve_lxc_start_timeout:    10
+
+###############################################################################
+# Pause for Container Delete Confirmation [group_vars, pve/lxc|pve/kvm]
+###############################################################################
+# When destroying a container, should the role pause and prompt for manual
+# confirmation before continuing? Required.
+#
+# Example Ansible Command Extension:
+#   -e 'pve_destroy_hosts="test.example.com,test2.example.com"'
+#
+# Datatype: boolean (default: true)
+# Special case: None
+pve_destroy_pause: true
+
+###############################################################################
+# Container Defaults [group_vars, pve/lxc|pve/kvm]
+###############################################################################
+# Default settings to apply to containers on container creation. These should
+# be defined in group_vars for all containers and specifically overridden on a
+# per-host basis in host_vars.
+
+# SSH Public key for default container user. Typically this is the root user
+# (and can be used to later manage that container with ansible). Suggest to use
+# an ansible SSH key to enable ansible management of the created containers.
+# Required.
+#
+# Datatype: string (default: '')
+# Special case: Contents of an OpenSSH public key (ssh-rsa ... user@machine).
+#
+# Reference:
+# * https://serverfault.com/questions/380712/ssh-public-key-format
+pve_vm_ssh_public_key: ''
+
+# Password for default container user. Typically this is the root user. Set
+# only on container creation and will be the same for any container created
+# during the same role run. Ansible should manage the created container and
+# change or disable this after creation.
+#
+# Datatype: string (default: random 32 character password)
+# Special case: Sensitive material, use vault.
+pve_vm_initial_password: '{{ lookup("password", "/dev/null chars=ascii_lowercase,ascii_uppercase,digits length=32") }}'
+
+# Location of KVM disks on node. Use host_vars if different for each
+# cluster node, and use pve_kvm (in pve_kvm definition) to override for a
+# specific container. Required.
+#
+# TODO(pve 8.0+): Deprecated in 7.4. Favor use of specific directories for each
+#    container type instead.
+#
+# Reference:
+# * https://forum.proxmox.com/threads/what-is-var-lib-vz-template-qemu-for.100092/
+#
+# Datatype: string (default: '/var/lib/vz/template/qemu')
+# Special case: No trailing spaces/slashes.
+pve_vm_disk_location: '/var/lib/vz/template/qemu'
+
+# Location of ISO images on cluster node. Use host_vars if different for each
+# cluster node. Required.
+#
+# Datatype: string (default: '/var/lib/vz/template/iso')
+# Special case: No trailing spaces/slashes.
+pve_vm_iso_location: '/var/lib/vz/template/iso'
+
+# Seconds to wait before considering an image download failed. Required.
+#
+# Datatype: integer (default: 120)
+# Special case: None
+pve_vm_download_timeout: 120

@@ -1,0 +1,53 @@
+---
+###############################################################################
+# Install Core Packages
+###############################################################################
+# Update and install core packages.
+#
+# Enterprise subscription repo requires subscription key and will cause apt to
+# fail. Don't update apt cache until enterprise repo is removed.
+#
+# Assumption:
+# * No PVE subscription. Subscriptions are removed and not currently dealt with
+#   in this role.
+#
+# Standard PVE Distributed Repos (non-free added for GPU passthrough support):
+# * {RELEASE} main contrib
+# * {RELEASE}-updates main contrib
+# * {RELEASE}-security main contrib
+#
+# Reference:
+# * https://r-pufky.github.io/docs/virtualization/hypervisors/pve/index.html#enable-automatic-non-subscription-updates
+
+- name: 'packages | add packages (may take a while)'
+  ansible.builtin.debug:
+    msg: |
+      Packages are being installed. This will take a few minutes.
+
+- name: 'packages | remove enterprise (subscription) repo'
+  ansible.builtin.apt_repository:
+    repo:  'deb https://enterprise.proxmox.com/debian/pve {{ pve_debian_base }} pve-enterprise'
+    state: 'absent'
+    update_cache: true
+
+- name: 'packages | add non-subscription repo'
+  ansible.builtin.apt_repository:
+    repo:     'deb http://download.proxmox.com/debian/pve {{ pve_debian_base }} pve-no-subscription'
+    filename: 'pve_non_subscription'
+    state:    'present'
+    update_cache: true
+
+- name: 'packages | install core packages'
+  ansible.builtin.apt:
+    name:  '{{ pve_core_packages }}'
+    state: 'latest'
+    update_cache: true
+
+- name: 'packages | upgrade distribution packages'
+  ansible.builtin.apt:
+    upgrade: 'dist'
+    state:   'latest'
+    update_cache: true
+  async: 600
+  poll: 5
+  when: pve_dist_upgrade

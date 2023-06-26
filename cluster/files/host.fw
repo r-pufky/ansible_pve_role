@@ -1,0 +1,4 @@
+[RULES]
+
+GROUP pve
+IN DROP -log nolog # Drop all other traffic.

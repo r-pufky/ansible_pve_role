@@ -1,0 +1,76 @@
+---
+###############################################################################
+# Cluster Setting Configuration
+###############################################################################
+# All cluster-based configurable settings.
+
+###############################################################################
+# Cluster Name [group_vars, pve/provision]
+###############################################################################
+# Human readable name of the cluster. Set during provisioning only. Required.
+#
+# Datatype: string (default: 'example-cluster')
+# Special case: None
+pve_cluster_name: 'example-cluster'
+
+###############################################################################
+# Cluster Master Node IP [group_vars, pve/provision]
+###############################################################################
+# Master node IP. All cluster commands will be executed against this node.
+# Required.
+#
+# Datatype: string (default: '192.168.0.10')
+# Special case: IPv4/6.
+pve_master_node_ip: '192.168.0.10'
+
+###############################################################################
+# Cluster Node IPs [group_vars, pve/cluster]
+###############################################################################
+# All nodes on the cluster. Include the master node. Cluster nodes
+# automatically set firewall to only accept node-to-node traffic.
+#
+# Datatype: list of strings (default: ['192.168.0.10', '192.168.0.11'])
+# Special case: IPv4/6.
+pve_node_ips:
+  - '192.168.0.10'
+  - '192.168.0.11'
+
+###############################################################################
+# Nvidia GPU Driver Passthru [host_vars, pve/cluster]
+###############################################################################
+# Configure GPU passthru during cluster setup. This is node specific and should
+# only be enabled on nodes where passthru is used. Enabling passthru will
+# automatically enable 'non-free' and 'backport' repos. Node will be rebooted
+# automatically on a configuration change which installs or changes devices.
+# Occurs during cluster setup. Required.
+#
+# Datatype: boolean (default: true)
+# Special case: None
+#
+# Reference:
+# * https://wiki.debian.org/NvidiaGraphicsDrivers
+pve_nvidia_passthru: true
+
+###############################################################################
+# Cluster Node Cron jobs [host_vars, pve/cluster]
+###############################################################################
+# Custom node cronjob management. Defined per job name.
+#
+# Datatype: dict (default: {})
+#   {JOB}:
+#     # Use ansible.builtin.cron, either special_time or settings exclusively.
+#     month:   '*'
+#     weekday: '*'
+#     day:     '*'
+#     hour:    '*'
+#     minute:  '*'
+#     special_time: 'weekly'
+#     user:    str execute cronjob as user.
+#     job:     str commands to execute.
+#     comment: str job comment.
+#     state:   'present'
+# Special case: {} (disables management of cronjobs)
+#
+# Reference:
+# * https://docs.ansible.com/ansible/latest/collections/ansible/builtin/cron_module.html
+pve_cron: {}

@@ -1,0 +1,62 @@
+---
+###############################################################################
+# Default PVE Package Dependencies
+###############################################################################
+# Default required packages for PVE install.
+
+pve_core_packages:
+  - 'unattended-upgrades' # automatic updates.
+  - 'sudo'                # sudo usage with ansible.
+  - 'vim'                 # sane minimal editor.
+  - 'python3-pexpect'     # password expect usage on cluster setup.
+  - 'ifupdown2'           # bonded bridges on PVE 7 (not installed by default).
+  - 'xz-utils'            # For manual debian package installs.
+
+###############################################################################
+# Default PVE Base Debian Release
+###############################################################################
+# Base debian release used in proxmox release.
+
+# Used to determine which repositories to enable. PVE 7 = bullseye.
+pve_debian_base: 'bullseye'
+
+###############################################################################
+# SSH Key Regeneration
+###############################################################################
+# PVE auto-generated keys are NOT 4096 RSA (2048 RSA) and will always trigger
+# regeneration with roles/sshd with any reasonable security implementation.
+#
+# Regenerating the SSH key with a known high-security key will result in the
+# following errors:
+#
+# * Failed to run vncproxy (e.g. consoles don't work for systems on other
+#   servers in clusters)
+# * Connection error 1006 when connecting remotely to nodes or kvm/lxc from a
+#   given node.
+#
+# Manual Fix:
+# offending SSH keys end up in /etc/ssh/ssh_host_keys; these need to get
+# removed then update with 'pvecm updatecerts' (this redistributes the root
+# cluster key). Run the following commands for each cluster node:
+#
+#  rm /root/.ssh/known_hosts
+#  rm /etc/ssh/ssh_known_hosts
+#  pvecm updatecerts
+#
+# Prevent:
+# Don't remove / regenerate keys for SSHD when setting up cluster
+# configuration.
+#
+# Alternatively if all the root / host keys are collected, it can be manually
+# reset and should work.
+#
+# Decision:
+# Disable RSA key regeneration; re-approach manually updating known_hosts with
+# generated keys when tracking is possible.
+#
+# Reference:
+# * https://forum.proxmox.com/threads/task-error-failed-to-run-vncproxy.49954/
+# * https://github.com/lae/ansible-role-proxmox/blob/develop/tasks/ssh_cluster_config.yml
+# * https://r-pufky.github.io/docs/virtualization/hypervisors/pve/index.html#install-service
+
+sshd_disable_rsa_regeneration: true

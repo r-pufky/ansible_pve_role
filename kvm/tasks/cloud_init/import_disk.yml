@@ -1,0 +1,32 @@
+---
+###############################################################################
+# Import Local Cloudinit Image to KVM
+###############################################################################
+# Imports cloud init image specified in template to the KVM root disk.
+#
+# The root disk is autodetected as 'vm-{ID}-disk-0' must be defined in pve_kvm
+# and must be at least as large as the initial cloudinit template (as resize
+# operations are applied to all interfaces). Format is inferred from the
+# 'vm-{ID}-disk-0' defintion on the KVM interface mountpoint:
+#
+#   scsi0: local:100/vm-100-disk-0.qcow2,size=4G
+#
+# Args:
+#   _pve_vm: dict kvm_config parse options.
+#   _pve_cloud_init_disk: string full local path of the extracted image ready
+#       to import into vm.
+#
+# Reference:
+# * https://pve.proxmox.com/pve-docs/qm.1.html
+
+- name: '{{ _pve_vm.vmid }} import | importing root disk (this may take a while)'
+  ansible.builtin.debug:
+    msg: |
+      Importing: {{ _pve_vm.root.disk }}
+
+# Resize in create_disk; as this disk is imported but not mounted yet.
+- name: '{{ _pve_vm.vmid }} import | import cloud init disk to rootfs ({{ _pve_vm.root.disk }})' # noqa no-changed-when always execute
+  ansible.builtin.command: 'qm importdisk {{ _pve_vm.vmid }} "{{ _pve_cloud_init_disk }}" {{ _pve_vm.cloud_init.storage }}{% if _pve_vm.root.format|length > 0 %} --format {{ _pve_vm.root.format }}{% endif %}'
+  delegate_to: '{{ _pve_vm.node }}'
+
+- ansible.builtin.import_tasks: roles/pve/kvm/tasks/operations/rescan.yml

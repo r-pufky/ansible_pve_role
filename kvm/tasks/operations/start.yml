@@ -1,0 +1,48 @@
+---
+###############################################################################
+# Start KVM Instance
+###############################################################################
+# Start a KVM instance and wait for container to spin up.
+#
+# On first boot some systems will kernel panic if the disk has been resized.
+# A reset operation will fix this.
+#
+# Args:
+#   _pve_vm: dict kvm_config parse options.
+#   _pve_vm_disk_resize: boolean true if any VM disk has been resized.
+#   pve_kvm_start_timeout: int time to wait in seconds for starting.
+#   pve_kvm_shutdown_timeout: int time to wait in seconds for stopping.
+#   pve_kvm_disk_resize_panic_reset: boolean true to force reset on KVM's with
+#       resized disks.
+#
+# Reference:
+# * https://pve.proxmox.com/pve-docs/qm.1.html
+# * https://pve.proxmox.com/pve-docs/pve-admin-guide.html
+# * https://forum.proxmox.com/threads/kernel-panic-after-resizing-a-clone.93738/
+
+- name: '{{ _pve_vm.vmid }} | start vm (timeout after {{ pve_kvm_start_timeout }} seconds)' # noqa no-changed-when always execute
+  ansible.builtin.command: 'qm start {{ _pve_vm.vmid }} --timeout {{ pve_kvm_start_timeout }}'
+  delegate_to: '{{ _pve_vm.node }}'
+
+- name: '{{ _pve_vm.vmid }} | handle vm kernel panic on disk resize'
+  block:
+    - name: '{{ _pve_vm.vmid }} | (disk resized) wait for vm to spin up'
+      ansible.builtin.pause:
+        seconds: '{{ (pve_kvm_start_timeout*0.5)|int }}'
+        echo: false
+
+    - name: '{{ _pve_vm.vmid }} | (disk resized) shutdown (timeout after {{ pve_kvm_shutdown_timeout }} seconds)'
+      ansible.builtin.command: 'qm shutdown {{ _pve_vm.vmid }} --forceStop 1 --skiplock 1 --timeout {{ pve_kvm_shutdown_timeout }}'
+      when:   pve_kvm_disk_resize_panic_reset
+      delegate_to: '{{ _pve_vm.node }}'
+
+    - name: '{{ _pve_vm.vmid }} | start vm (timeout after {{ pve_kvm_start_timeout }} seconds)'
+      ansible.builtin.command: 'qm start {{ _pve_vm.vmid }} --timeout {{ pve_kvm_start_timeout }}'
+      delegate_to: '{{ _pve_vm.node }}'
+
+  when: _pve_vm_disk_resize
+
+- name: '{{ _pve_vm.vmid }} | wait for vm to spin up'
+  ansible.builtin.pause:
+    seconds: '{{ pve_kvm_start_timeout }}'
+    echo: false

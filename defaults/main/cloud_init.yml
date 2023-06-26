@@ -1,0 +1,93 @@
+###############################################################################
+# Cloud Init Settings [group_vars, pve/kvm]
+###############################################################################
+# Default settings for cloud init KVM containers.
+#
+# Reference:
+# * https://cloudinit.readthedocs.io/en/latest/topics/examples.html
+
+# Location of cloudinit images on node. Images will be cached at this location
+# on the node and imported during KVM creation. The default location is
+# referenced as 'local' in config definitions. Required.
+#
+# Datatype: string (defualt: '/var/lib/vz/images')
+# Special case: No trailing spaces/slashes.
+pve_cloud_init_cache: '/var/lib/vz/images'
+
+# Location of cloudinit custom configuration files on node. The default
+# location is referenced as 'local' in config definitions. Required.
+#
+# Datatype: string (defualt: '/var/lib/vz/cloud_init')
+# Special case: No trailing spaces/slashes.
+pve_cloud_init_custom: '/var/lib/vz/cloud_init'
+
+# Metadata settings for 'cicustom' option.
+# Provider specific format. Key is used as the filename, value is the formatted
+# file content. Optional.
+#
+# Example:
+#   pve_cloud_init_meta:
+#     meta-default: |
+#       availability_zone: 'us-east-1b'
+#     100-cloud-init: |
+#       availability_zone: 'us-east-1b'
+#
+#   pve_kvm.config:
+#     cicustom: meta=local:cloud_init/100-cloud-init.yml
+#
+# Datatype: dict (default: {})
+# Special case: None
+pve_cloud_init_meta: {}
+
+# Network settings for 'cicustom' option. Key is used as the filename, value is
+# the formatted file content. Optional.
+#
+# Example:
+#   pve_cloud_init_network:
+#     meta-default: |
+#       resolv_conf:
+#         nameservers: ['8.8.4.4', '8.8.8.8']
+#     100-cloud-init: |
+#       resolv_conf:
+#         nameservers: ['8.8.4.4', '8.8.8.8']
+#
+#   pve_kvm.config:
+#     cicustom: network=local:cloud_init/100-cloud-init.yml
+#
+# Datatype: dict (default: {})
+# Special case: None
+pve_cloud_init_network: {}
+
+# User settings for 'cicustom' option. Key is used as the filename, value is
+# the formatted file content. Optional.
+#
+#   pve_cloud_init_network:
+#     meta-default: |
+#       users:
+#         - default
+#     100-cloud-init: |
+#       users:
+#         - custom
+#
+#   pve_kvm.config:
+#     cicustom: user=local:cloud_init/100-cloud-init.yml
+#
+# Datatype: dict (default {})
+# Special case: None
+pve_cloud_init_user: {}
+
+# Vendor settings for 'cicustom' option. Key is used as the filename, value is
+# the formatted file content. Optional.
+#
+#   pve_cloud_init_network:
+#     meta-default: |
+#       vendordata: {excluded: 'text/part-handler'}
+#     100-cloud-init: |
+#       vendordata: {excluded: 'text/part-handler'}
+#
+#   pve_kvm.config:
+#     cicustom: vendor=local:cloud_init/100-cloud-init.yml
+#
+# Datatype: dict (default {})
+# Special case: None
+pve_cloud_init_vendor: {}

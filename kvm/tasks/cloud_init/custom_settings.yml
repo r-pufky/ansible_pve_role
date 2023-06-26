@@ -1,0 +1,81 @@
+---
+###############################################################################
+# Deploy Cloud Init Custom Settings Files
+###############################################################################
+# Custom settings files may be mounted during KVM creation using the 'cicustom'
+# command to automatically apply default settings to a cloud init KVM instance
+# on boot.
+#
+# Args:
+#   pve_cloud_init_meta: dict Metadata settings for cloud init KVM machines.
+#   pve_cloud_init_network: dict Network settings for cloud init KVM machines.
+#   pve_cloud_init_user: dict User settings for cloud init KVM machines.
+#   pve_cloud_init_vendor: dict Vendor settings for cloud init KVM machines.
+#
+# Reference:
+# * https://cloudinit.readthedocs.io/en/latest/index.html
+
+- name: 'cloud init | ensure cloud init custom settings location exists'
+  ansible.builtin.file:
+    path:  '{{ pve_cloud_init_custom }}'
+    owner: 'root'
+    group: 'root'
+    mode:  0755
+    state: 'directory'
+  delegate_to: '{{ _pve_vm.node }}'
+
+- name: 'cloud init | write metadata files'
+  ansible.builtin.template:
+    src:   'file.template.j2'
+    dest:  '{{ pve_cloud_init_custom }}/{{ item.key }}.yml'
+    force: true
+    owner: 'root'
+    group: 'root'
+    mode:  0640
+  vars:
+    file_contents: '{{ item.value }}'
+  delegate_to: '{{ _pve_vm.node }}'
+  loop: '{{ pve_cloud_init_meta|dict2items }}'
+  when: pve_cloud_init_meta|length > 0
+
+- name: 'cloud init | write network files'
+  ansible.builtin.template:
+    src:   'file.template.j2'
+    dest:  '{{ pve_cloud_init_custom }}/{{ item.key }}.yml'
+    force: true
+    owner: 'root'
+    group: 'root'
+    mode:  0640
+  vars:
+    file_contents: '{{ item.value }}'
+  delegate_to: '{{ _pve_vm.node }}'
+  loop: '{{ pve_cloud_init_network|dict2items }}'
+  when: pve_cloud_init_network|length > 0
+
+- name: 'cloud init | write user files'
+  ansible.builtin.template:
+    src:   'file.template.j2'
+    dest:  '{{ pve_cloud_init_custom }}/{{ item.key }}.yml'
+    force: true
+    owner: 'root'
+    group: 'root'
+    mode:  0640
+  vars:
+    file_contents: '{{ item.value }}'
+  delegate_to: '{{ _pve_vm.node }}'
+  loop: '{{ pve_cloud_init_user|dict2items }}'
+  when: pve_cloud_init_user|length > 0
+
+- name: 'cloud init | write vendor files'
+  ansible.builtin.template:
+    src:   'file.template.j2'
+    dest:  '{{ pve_cloud_init_custom }}/{{ item.key }}.yml'
+    force: true
+    owner: 'root'
+    group: 'root'
+    mode:  0640
+  vars:
+    file_contents: '{{ item.value }}'
+  delegate_to: '{{ _pve_vm.node }}'
+  loop: '{{ pve_cloud_init_vendor|dict2items }}'
+  when: pve_cloud_init_vendor|length > 0

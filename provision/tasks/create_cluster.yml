@@ -1,0 +1,56 @@
+---
+###############################################################################
+# Add PVE Server to Cluster
+###############################################################################
+# Use 'pvecm' to create/add a machine to the cluster.
+#
+# Exit codes captured:
+#   0: cluster detected/status
+#   2: no cluster detected
+#
+# Reference:
+# * https://pve.proxmox.com/pve-docs/pvecm.1.html
+# * https://pve.proxmox.com/wiki/Cluster_Manager
+# * https://r-pufky.github.io/docs/virtualization/hypervisors/pve/index.html#add-to-datacenter-cluster
+
+# Use default or first available IP address of the target machine.
+# Reference: https://medium.com/opsops/ansible-default-ipv4-is-not-what-you-think-edb8ab154b10
+- name: 'create cluster | set server connected ip'
+  ansible.builtin.set_fact:
+    _pve_host_ip: '{{ ansible_default_ipv4.address|default(ansible_all_ipv4_addresses[0]) }}'
+
+- name: 'create cluster | check server cluster status'
+  ansible.builtin.command: 'pvecm status'
+  changed_when: false
+  register: _cluster_check
+  failed_when: _cluster_check.rc > 2
+
+- name: 'create cluster | flush handler states'
+  ansible.builtin.meta: flush_handlers
+
+- name: 'create cluster | create cluster'
+  ansible.builtin.command: 'pvecm create {{ pve_cluster_name }}'
+  when: |
+    _cluster_check.rc == 2 and
+    _pve_host_ip == pve_master_node_ip
+
+# expect: enter password, accept host fingerprints
+- name: 'create cluster | add to cluster'
+  ansible.builtin.expect:
+    command: 'pvecm add {{ pve_master_node_ip }}'
+    responses:
+      'password for': '{{ pve_root_password }}'
+      '(?i)fingerprint': 'yes'
+    echo: true
+    timeout: 60
+  no_log: true # user password
+  when: |
+    _cluster_check.rc == 2 and
+    _pve_host_ip != pve_master_node_ip and
+    _pve_host_ip in pve_node_ips
+
+- name: 'create cluster | verify cluster created'
+  ansible.builtin.command: 'pvecm status'
+  changed_when: false
+  register: _cluster_verify
+  failed_when: _cluster_verify.rc == 2

@@ -1,0 +1,17 @@
+---
+###############################################################################
+# Datacenter Cluster Configuration
+###############################################################################
+# Set proxmox root email address.
+#
+# By default the install requires a real email address, however this is sent
+# in a very loosely configured built-in postfix instance resulting in massive
+# increase in spam to that account.
+#
+# The WebUI prevents using localhost as a valid domain.
+#
+# Reference:
+# * https://pve.proxmox.com/wiki/User_Management
+
+- name: 'email | send cluster root email to {{ pve_root_email }}' # noqa no-changed-when always execute
+  ansible.builtin.command: 'pveum user modify root@pam -email {{ pve_root_email }}'

@@ -1,0 +1,40 @@
+---
+###############################################################################
+# Resize KVM Disk
+###############################################################################
+# Resize an existing disk.
+#
+# KVM disks may never be reduced in size (they must be recreated) reducing size
+# will result in an error.
+#
+# On first boot some systems will kernel panic if the disk has been resized.
+# Flag resize operation for later tasks.
+#
+# Exit codes captured:
+#   0: resize succeeded
+#   255: no resize needed
+#
+# Args:
+#   _pve_vm: dict kvm_config parse options.
+#   mountpoint: string name of disk (sata0, scsi0, etc).
+#   size: string size of disk.
+#
+# Generates:
+#   _pve_vm_disk_resize: Will set to true on a successful resize operation.
+#
+# Reference:
+# * https://pve.proxmox.com/pve-docs/qm.1.html
+# * https://pve.proxmox.com/pve-docs/pve-admin-guide.html
+# * https://forum.proxmox.com/threads/kernel-panic-after-resizing-a-clone.93738/
+# * https://pve.proxmox.com/wiki/Resize_disks
+
+- name: '{{ _pve_vm.vmid }} | resize disk {{ mountpoint }} if needed' # noqa no-changed-when always execute
+  ansible.builtin.command: 'qm resize {{ _pve_vm.vmid }} {{ mountpoint }} {{ size }}'
+  register: _pve_resize
+  failed_when: _pve_resize.rc not in (0, 255)
+  delegate_to: '{{ _pve_vm.node }}'
+
+- name: '{{ _pve_vm.vmid }} | flagging resize'
+  ansible.builtin.set_fact:
+    _pve_vm_disk_resize: true
+  when: _pve_resize.rc == 0

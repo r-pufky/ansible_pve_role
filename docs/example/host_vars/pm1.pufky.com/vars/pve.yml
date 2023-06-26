@@ -1,0 +1,65 @@
+---
+# The master node has 3 ethernet interfaces. A bonded adaptor will be created,
+# and two virtual bridges connected to the bonded adaptor and the remaining
+# ethernet adaptor. This enables future changes to PVE cluster/container
+# networking that is not dependant on the physical card.
+#
+# The public network (vmbr0) will host containers on a bonded pair, and the
+# private network (vmbr1) will host the cluster backbone network for syncing
+# cluster information and container migrations.
+#
+# Adaptor names will be different for each system. Fake values have been
+# added for addresses.
+pve_interfaces: |
+  auto lo
+  iface lo inet loopback
+
+  auto eno1
+  iface eno1 inet manual
+
+  auto eno2
+  iface eno2 inet manual
+
+  auto enp7s0
+  iface enp7s0 inet manual
+
+  auto bond0
+  iface bond0 inet manual
+    bond-slaves eno1 eno2
+    bond-miimon 100
+    bond-mode 802.3ad
+    bond-xmit-hash-policy layer2+3
+
+  auto vmbr0
+  iface vmbr0 inet manual
+        address 192.168.0.5/24
+        gateway 192.168.0.1
+        hwaddress AA:BB:CC:DD:EE:FF
+        bridge-ports bond0
+        bridge-stp off
+        bridge-fd 0
+        bridge-vlan-aware yes
+        bridge-vids 2-4094
+  #hosted kvm/lxc (mac: pm1.example.com).
+
+  auto vmbr1
+  iface vmbr1 inet static
+        address 172.20.20.11/24
+        hwaddress AA:BB:CC:DD:EE:EE
+        bridge-ports enp7s0
+        bridge-stp off
+        bridge-fd 0
+        bridge-vlan-aware yes
+        bridge-vids 20
+  #cluster network (mac: pm1-cluster.example.com).
+
+# enable nvidia passthru on master pve server.
+pve_nvidia_passthru: true
+
+# run a cronjob on master to export acme certs to a backup location.
+pve_cron:
+  exported_acme_certs_update:
+    comment: 'ACME certs expire every 90 days and are renewed every 60.'
+    user: 'root'
+    job: 'ACME_TAR=`ls -1 /data/srv/acme/backup/*.tar.xz | sort | tail -1` && tar xJf "$ACME_TAR" --overwrite -C /data/srv/acme/cert'
+    special_time: 'weekly'

@@ -1,0 +1,22 @@
+---
+###############################################################################
+# Proxmox Handlers
+###############################################################################
+# Global proxmox handlers.
+
+- name: 'restart pveproxy'
+  ansible.builtin.service:
+    name:  'pveproxy'
+    state: 'restarted'
+
+- name: 'restart unattended-upgrades'
+  ansible.builtin.service:
+    name:  'unattended-upgrades'
+    state: 'restarted'
+
+- name: 'update grub'
+  ansible.builtin.command: 'update-grub'
+  changed_when: false
+
+- name: 'reboot pve'
+  ansible.builtin.reboot:

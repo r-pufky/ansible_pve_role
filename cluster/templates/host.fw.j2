@@ -1,0 +1,38 @@
+[OPTIONS]
+
+enable: {{ pve_dc_firewall_host_enable|default(true)|int }}
+log_level_in: {{ pve_dc_firewall_host_log_level_in|default('nolog')|lower }}
+log_level_out: {{ pve_dc_firewall_host_log_level_out|default('nolog')|lower }}
+log_nf_conntrack: {{ pve_dc_firewall_host_log_nf_conntrack|default(false)|int }}
+ndp: {{ pve_dc_firewall_host_ndp|default(true)|int }}
+nf_conntrack_allow_invalid: {{ pve_dc_firewall_host_nf_conntrack_allow_invalid|default(false)|int }}
+nf_conntrack_helpers: {{ pve_dc_firewall_host_nf_conntrack_helpers|default('')|lower }}
+nf_conntrack_max: {{ pve_dc_firewall_host_nf_conntrack_max|default(262144)|int }}
+nf_conntrack_tcp_timeout_established: {{ pve_dc_firewall_host_nf_conntrack_tcp_timeout_established|default(432000)|int }}
+nf_conntrack_tcp_timeout_syn_recv: {{ pve_dc_firewall_host_nf_conntrack_tcp_timeout_syn_recv|default(60)|int }}
+nosmurfs: {{ pve_dc_firewall_host_nosmurfs|default(true)|int }}
+protection_synflood: {{ pve_dc_firewall_host_protection_synflood|default(false)|int }}
+protection_synflood_burst: {{ pve_dc_firewall_host_protection_synflood_burst|default(1000)|int }}
+protection_synflood_rate: {{ pve_dc_firewall_host_protection_synflood_rate|default(200)|int }}
+smurf_log_level: {{ pve_dc_firewall_host_smurf_log_level|default('nolog')|lower }}
+tcp_flags_log_level: {{ pve_dc_firewall_host_tcp_flags_log_level|default('nolog')|lower }}
+tcpflags: {{ pve_dc_firewall_host_tcpflags|default(false)|int }}
+
+{% if pve_dc_firewall_host_rules|length > 0 %}
+[RULES]
+{% for rule in pve_dc_firewall_host_rules %}
+
+{{- rule.direction|default('in')|upper }}
+{%- if rule.macro is defined %} {{ rule.macro }}({{ rule.action|default('ACCEPT') }}) {% else %} {{ rule.action|default('ACCEPT') }} {% endif %}
+{%- if rule.source is defined %}-source {{ rule.source }} {% endif %}
+{%- if rule.sport is defined %}-sport {{ rule.sport }} {% endif %}
+{%- if rule.dest is defined %}-dest {{ rule.dest }} {% endif %}
+{%- if rule.dport is defined %}-dport {{ rule.dport }} {% endif %}
+{%- if rule.proto is defined %}-p {{ rule.proto }} {% endif %}
+{%- if rule.log is defined %}-log {{ rule.log|lower }} {% endif %}
+{%- if rule.icmp_type is defined %}-icmp-tcpe {{ rule.icmp_type }} {% endif %}
+{%- if rule.iface is defined %}-i {{ rule.iface }} {% endif %}
+{%- if rule.comment is defined %}# {{ rule.comment }} {% endif %}
+
+{% endfor %}
+{% endif %}

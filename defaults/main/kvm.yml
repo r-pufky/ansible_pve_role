@@ -1,0 +1,338 @@
+---
+###############################################################################
+# KVM Configuration Template [host_vars, pve/kvm]
+###############################################################################
+# This should be copied and configured in host_vars/{HOST}/vars.
+#
+# All hosts with a template definition are automatically pulled into pve/lxc
+# tasks and matched to the specified cluster/node to be setup.
+#
+# If creating a cloud init KVM instance, be sure to set cloud init settings.
+# Using 'cicustom' assumes that those configuration files have been set in
+# 'pve_cloud_init_*'.
+#
+# For configuration format help:
+# * https://pve.proxmox.com/wiki/Manual:_qm.conf
+#
+# Recommended: setup the VM via the GUI and paste the resulting config file
+# into config, updating as needed.
+#
+# Defaults here are example only.
+#
+# Datatype: dict (default: {})
+# Special case:
+#   #########################################################################
+#   # Container Definition
+#   #########################################################################
+#   # Unique VM ID for the cluster. Required.
+#   #
+#   # Dataype: integer
+#   # Special case: Must be unique cluster wide. ID's lower than 100 are
+#   #     reserved for system use.
+#   vmid: 100
+#
+#   # Cluster node on the cluster to create container on. Required.
+#   #
+#   # Datatype: string
+#   # Special case: Use FQDN/IP for cluster node defined in Hosts.
+#   node: 'cluster-node.example.com'
+#
+#   # Template to create KVM container from. Required.
+#   #
+#   # Optional if 'cloudinit' is set, this will automatically mount the
+#   # specified template as 'vm-{ID}-disk-0'.
+#   #
+#   # Datatype: string (default: 'debian-bullseye-cloudinit')
+#   # Special case: Use template defined in 'pve_image_map'.
+#   template: 'debian-bullseye-cloudinit'
+#
+#   # Force shutdown if normal shutdown fails? Required.
+#   #
+#   # Datatype: boolean (default: true)
+#   # Special case: None
+#   force_stop: true
+#
+#   # Cloutinit storage location. Optional.
+#   #
+#   # Setting this will do the following:
+#   # * Create 'cloudinit' settings ISO on local cluster/node storage location
+#   #   specified by this setting.
+#   # * Mount 'cloudinit' settings ISO on the first available 'ide' device; Do
+#   #   **NOT** add to config definition. This is managed automatically.
+#   # * Download/extract/convert the specified 'template' to a disk image and
+#   #   mount to 'vm-{ID}-disk-0'. Specify in config. Size must be at least the
+#   #   size of the template image. The following will mount 'template' as
+#   #   qcow2 and expand the disk to 4GB.
+#   #
+#   #     scsi0: local-lvm:vm-100-disk-0.qcow2,size=4G
+#   #
+#   # Datatype: string (default: '')
+#   # Special case:
+#   # * local-lvm
+#   # * local
+#   # * {CUSTOM}
+#   cloud_init: 'local-lvm'
+#
+#   ###########################################################################
+#   # Firewall Configuration
+#   ###########################################################################
+#   # Configure firewall on the cluster node specifically for the container.
+#   #
+#   # Reference:
+#   # * https://pve.proxmox.com/pve-docs/chapter-pve-firewall.html#pve_firewall_vm_container_configuration
+#   #
+#   # Datatype: dict (default: {})
+#   # Special case:
+#   #   # Enable DHCP. Required.
+#   #   #
+#   #   # Datatype: boolean (default: true)
+#   #   # Special case: None
+#   #   dhcp: true
+#   #
+#   #   # Enable/disable firewall rules. Required.
+#   #   #
+#   #   # Datatype: boolean (default: false)
+#   #   # Special case: None
+#   #   enable: false
+#   #
+#   #   # Enable default IP filters. Required.
+#   #   #
+#   #   # Datatype: boolean (default: false)
+#   #   # Special case: None
+#   #   ipfilter: false
+#   #
+#   #   # Log level for incoming traffic. Required.
+#   #   #
+#   #   # Datatype: string (default: 'nolog')
+#   #   # Special case:
+#   #   # * alert
+#   #   # * crit
+#   #   # * debug
+#   #   # * emerg
+#   #   # * err
+#   #   # * info
+#   #   # * nolog (default)
+#   #   # * notice
+#   #   # * warning
+#   #   log_level_in: 'nolog'
+#   #
+#   #   # Log level for outgoing traffic. Required.
+#   #   #
+#   #   # Datatype: string (default: 'nolog')
+#   #   # Special case:
+#   #   # * alert
+#   #   # * crit
+#   #   # * debug
+#   #   # * emerg
+#   #   # * err
+#   #   # * info
+#   #   # * nolog (default)
+#   #   # * notice
+#   #   # * warning
+#   #   log_level_out: 'nolog'
+#   #
+#   #   # Enable/disable MAC address filter. Required.
+#   #   #
+#   #   # Datatype: boolean (default: true)
+#   #   # Special case: None
+#   #   macfilter: true
+#   #
+#   #   # Enable NDP (Neighbor Discovery Protocol). Required.
+#   #   #
+#   #   # Datatype: boolean (default: true)
+#   #   # Special case: None
+#   #   ndp: true
+#   #
+#   #   # Input policy. Required.
+#   #   #
+#   #   # Datatype: string (default: 'DROP')
+#   #   # Special case:
+#   #   # * ACCEPT
+#   #   # * REJECT
+#   #   # * DROP (default)
+#   #   policy_in: 'DROP'
+#   #
+#   #   # Output policy. Required.
+#   #   #
+#   #   # Datatype: string (default: 'ACCEPT')
+#   #   # Special case:
+#   #   # * ACCEPT (default)
+#   #   # * REJECT
+#   #   # * DROP
+#   #   policy_out: 'ACCEPT'
+#   #
+#   #   # Allow sending Router Advertisement. Required.
+#   #   #
+#   #   # Datatype: boolean (default: false)
+#   #   # Special case: None
+#   #   radv: false
+#   #
+#   #   # Firewall rules. Any undefined option is not used. Optional.
+#   #   #
+#   #   # Example:
+#   #   #   rules:
+#   #   #     - direction: 'IN'
+#   #   #       action:    'ACCEPT'
+#   #   #       source:    '+cluster'
+#   #   #       proto:     'udp'
+#   #   #       dport:     '5404:5405'
+#   #   #       log:       'nolog'
+#   #   #       comment:   'Corosync cluster traffic'
+#   #   #
+#   #   # Reference:
+#   #   # * https://pve.proxmox.com/pve-docs/chapter-pve-firewall.html#_firewall_rules
+#   #   # * https://www.iana.org/assignments/service-names-port-numbers/service-names-port-numbers.xhtml
+#   #   # * https://www.iana.org/assignments/protocol-numbers/protocol-numbers.xhtml
+#   #   # * https://www.iana.org/assignments/icmp-parameters/icmp-parameters.xhtml#icmp-parameters-types
+#   #   #
+#   #   # Datatype: list of vars (default: [])
+#   #   #   - direction: string 'IN','OUT' 'GROUP'. Default: 'IN'.
+#   #   #     macro:     string macro to use. Default '' (no macros).
+#   #   #     action:    string action 'ACCEPT','REJECT','DROP'. Default: 'ACCEPT'.
+#   #   #     source:    string source. {IP/CIDR/IPSet/IPAlias},range({IP}-{IP}).
+#   #   #     sport:     string source port. TCP/UDP port, may use service names in
+#   #   #         /etc/services. PORT/{SERVICE}/range({PORT}:{PORT},{PORT}:{PORT}).
+#   #   #     dest:      string destination. IP/CIDR/IPSet/IPAlias,range({IP}-{IP}).
+#   #   #     dport:     string destination port. TCP/UDP port, may use service names
+#   #   #         in /etc/services. PORT/{SERVICE}/range({PORT}:{PORT},{PORT}:{PORT}).
+#   #   #     proto:     string IP protocol. Use protcol names 'tcp','udp' or numbers
+#   #   #         in /etc/protocols.
+#   #   #     log:       string rule log level. 'alert','crit','debug','emerg','err',
+#   #   #         'info','nolog','notice','warning'.
+#   #   #     icmp_type: integer icmp type. Only used if proto is 'icmp'.
+#   #   #     iface:     string interface name.
+#   #   #     comment:   string description. Default: ''.
+#   #   # Special case: Security group inclusion rules use a special subset of vars:
+#   #   #     - direction: 'GROUP'
+#   #   #       action:    '{SECURITY GROUP NAME}'
+#   #   #       iface:     (optional)
+#   #   #       comment:   (optional)
+#   #   rules: []
+#   #
+#   #   # IP Set configuration. Optional.
+#   #   #
+#   #   # Example:
+#   #   #   ipset:
+#   #   #     - name:    'management'
+#   #   #       comment: 'remote access'
+#   #   #       hosts:
+#   #   #         - {ip: '192.168.0.80',  comment: 'desktop'}
+#   #   #         - {ip: '192.168.0.81',  comment: 'laptop'}
+#   #   #         - {ip: '192.168.0.40',  comment: 'phone'}
+#   #   #
+#   #   # Reference:
+#   #   # * https://pve.proxmox.com/pve-docs/chapter-pve-firewall.html#pve_firewall_ip_sets
+#   #   #
+#   #   # Datatype: list of dict (default: {})
+#   #   #   - name:      string IPSet name. Must be alphanumeric and - only.
+#   #   #     comment:   string description of the IPset. Default: ''.
+#   #   #     hosts:     list of dict containing IP's for IPset.
+#   #   #       ip:      string IP/CIDR address of host.
+#   #   #       comment: string description of the IP. Default: ''.
+#   #   # Special case: 'cluster' IPSet is automatically created from pve_node_ips and
+#   #   #     may be used in definitions.
+#   #   ipset: []
+#   #
+#   #   # IP Aliases associates IPs with a name. These may be used in source and dest
+#   #   # firewall rules. Optional.
+#   #   #
+#   #   # Reference:
+#   #   # * https://pve.proxmox.com/pve-docs/chapter-pve-firewall.html#pve_firewall_ip_aliases
+#   #   #
+#   #   # Datatype: list of dict (default: [])
+#   #   #   - name:    string firewall rule hostname.
+#   #   #     ip:      string IP address of the host.
+#   #   #     comment: string comment. Default: ''.
+#   #   # Special case: None
+#   #   ip_aliases: []
+#
+#   #########################################################################
+#   # KVM Raw Configuration
+#   #########################################################################
+#   # qm raw config definition -- as is from /etc/pve/qemu-server/VMID.conf
+#   #
+#   # DO NOT VERTICAL ALIGN OR YAML QUOTE. THIS IS A STRING, NOT YAML!
+#   #
+#   # Generate Unique virt MAC: roles/pve/files/scripts/mac_generator {FQDN}
+#   #
+#   # Cloudinit Example:
+#   #   pve_kvm:
+#   #     vmid: 100
+#   #     node: 'pm1.example.com'
+#   #     template: 'debian-bullseye-cloudinit-xz'
+#   #     force_stop: true
+#   #     cloud_init: 'local-lvm'
+#   #     config: |
+#   #       boot: order=scsi0
+#   #       memory: 4096
+#   #       net0: virtio=02:C3:03:86:52:96,bridge=vmbr0
+#   #       scsi0: local-lvm:vm-100-disk-0,size=4G
+#   #       scsihw: virtio-scsi-pci
+#   #       smbios1: uuid=ccae5932-bf86-45a7-837f-a88bb63692b9
+#   #       vmgenid: 8f0267b6-ffd9-4ebe-b0ba-dbd9eab8a2dd
+#   #       ciuser: test
+#   #       cipassword: test
+#   #       citype: nocloud
+#   #       ipconfig0: ip=dhcp
+#   #
+#   # ISO Boot Example:
+#   #   pve_kvm:
+#   #     vmid: 100
+#   #     node: 'pm1.example.com'
+#   #     template: 'debian-11.1.0-amd64-netinst'
+#   #     force_stop: true
+#   #     config: |
+#   #       boot: order=ide2,scsi0
+#   #       memory: 4096
+#   #       net0: virtio=02:C3:03:86:52:96,bridge=vmbr0
+#   #       ide2: local:iso/debian-11.1.0-amd64-netinst.iso,media=cdrom
+#   #       scsi0: local-lvm:vm-100-disk-0,size=4G
+#   #       scsihw: virtio-scsi-pci
+#   #       smbios1: uuid=ccae5932-bf86-45a7-837f-a88bb63692b9
+#   #       vmgenid: 8f0267b6-ffd9-4ebe-b0ba-dbd9eab8a2dd
+#   #
+#   # Disk Only Example:
+#   #   pve_kvm:
+#   #     vmid: 100
+#   #     node: pm1.example.com
+#   #     template: debian-11.1.0-amd64-netinst
+#   #     force_stop: true
+#   #     config: |
+#   #       boot: order=scsi0
+#   #       memory: 4096
+#   #       net0: virtio=02:C3:03:86:52:96,bridge=vmbr0
+#   #       scsi0: local-lvm:vm-100-disk-0,size=4G
+#   #       scsihw: virtio-scsi-pci
+#   #       smbios1: uuid=ccae5932-bf86-45a7-837f-a88bb63692b9
+#   #       vmgenid: 8f0267b6-ffd9-4ebe-b0ba-dbd9eab8a2dd
+#   #
+#   # Reference:
+#   # * https://pve.proxmox.com/wiki/Manual:_qm.conf
+#   # * https://pve.proxmox.com/pve-docs/qm.1.html
+#   # * https://pve.proxmox.com/pve-docs/chapter-qm.html
+#   config: |
+#       # Specific file comment can be added here; will appear in the notes
+#       # section.
+#       balloon: 512
+#       bios: ovmf
+#       boot: order=scsi0
+#       cores: 1
+#       cpu: kvm64
+#       ide2: none,media=cdrom
+#       kvm: 0
+#       machine: q35
+#       memory: 1024
+#       name: example-kvm
+#       net0: virtio=AA:BB:CC:DD:EE:FF,bridge=vmbr0,firewall=1
+#       numa: 0
+#       onboot: 1
+#       startup: order=0
+#       ostype: l26
+#       scsihw: virtio-scsi-pci
+#       scsi0: local-lvm:vm-101-disk-0,size=8G
+#       efidisk0: local-lvm:vm-100-disk-0,size=4M
+#       smbios1: uuid=2c82be49-5d7f-49bd-8161-c75028f0f1ac
+#       sockets: 4
+#       vga: std
+#       vmgenid: 4eb79fba-2bae-46ab-ad22-da821ec522da
+pve_kvm: {}

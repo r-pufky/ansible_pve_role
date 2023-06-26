@@ -1,0 +1,48 @@
+---
+# Example Plex media server LXC container which uses
+# * nvidia passthru GPU
+# * mounted filesystems from the proxmox cluster node
+# * maps user ID's between the container and PVE host.
+#
+# GPU passthru settings will be different for you. See role log from
+# provisioning for the exact values you need to use.
+pve_lxc:
+  vmid:       850
+  node:       'pm1.example.com'
+  template:   'debian-bullseye'
+  force_stop: true
+  config: |
+    # Plex Media Server container
+    arch: amd64
+    cores: 4
+    hostname: xplex
+    memory: 5120
+    nameserver: 192.168.0.250
+    searchdomain: example.com
+    net0: name=eth0,bridge=vmbr0,firewall=1,gw=192.168.0.1,hwaddr=CC:CC:CC:DD:EE:FF,ip=192.168.0.155/24,tag=5,type=veth
+    ostype: debian
+    onboot: 1
+    startup: order=850
+    rootfs: local-lvm:vm-850-disk-0,size=4G
+    swap: 512
+    features: nesting=1
+    unprivileged: 1
+    mp0: volume=/data/media,mp=/data/media,ro=1
+    mp1: volume=/data/srv/plex,mp=/data/plex
+    lxc.cgroup2.devices.allow: c 195:* rwm
+    lxc.cgroup2.devices.allow: c 226:* rwm
+    lxc.cgroup2.devices.allow: c 236:* rwm
+    lxc.cgroup2.devices.allow: c 508:* rwm
+    lxc.mount.entry: /dev/nvidia0 dev/nvidia0 none bind,optional,create=file
+    lxc.mount.entry: /dev/nvidiactl dev/nvidiactl none bind,optional,create=file
+    lxc.mount.entry: /dev/nvidia-uvm dev/nvidia-uvm none bind,optional,create=file
+    lxc.mount.entry: /dev/nvidia-modeset dev/nvidia-modeset none bind,optional,create=file
+    lxc.mount.entry: /dev/nvidia-uvm-tools dev/nvidia-uvm-tools none bind,optional,create=file
+    lxc.mount.entry: /dev/dri dev/dri none bind,optional,create=dir
+    lxc.mount.entry: /dev/nvidia-caps /dev/nvidia-caps none bind,optional,create=dir
+    lxc.idmap: u 0 100000 5555
+    lxc.idmap: g 0 100000 5555
+    lxc.idmap: u 5555 5555 1
+    lxc.idmap: g 5555 5555 1
+    lxc.idmap: u 5556 105556 59980
+    lxc.idmap: g 5556 105556 59980

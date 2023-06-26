@@ -1,0 +1,34 @@
+---
+###############################################################################
+# Shutdown LXC Container
+###############################################################################
+# Shutdown a running LXC instance. Force shutdown if shutdown fails and it is
+# enabled.
+#
+# Use 'pct' to shutdown LXC container.
+#
+# Exit codes captured:
+#   0: container shutdown success
+#   255: container already shutdown
+#
+# Args:
+#   _pve_vm: dict parsed pve_{kvm,lxc} raw yaml values.
+#   pve_lxc_shutdown_timeout: int time to wait in seconds.
+#
+# Reference:
+# * https://pve.proxmox.com/pve-docs/pct.1.html
+
+- name: 'shutdown | force shutdown if enabled and shutdown fails'
+  block:
+    - name: '{{ _pve_vm.vmid }} | shutdown for configuration updates (timeout after {{ pve_lxc_shutdown_timeout }} seconds)'
+      ansible.builtin.command: 'pct shutdown {{ _pve_vm.vmid }} --timeout {{ pve_lxc_shutdown_timeout }}'
+      register: _pve_lxc_shutdown
+      failed_when: _pve_lxc_shutdown.rc not in (0, 255)
+      delegate_to: '{{ _pve_vm.node }}'
+  rescue:
+    - name: '{{ _pve_vm.vmid }} | forcing shutdown for configuration updates (timeout after {{ pve_lxc_shutdown_timeout }} seconds)'
+      ansible.builtin.command: 'pct shutdown {{ _pve_vm.vmid }} --forceStop 1 --timeout {{ pve_lxc_shutdown_timeout }}'
+      register: _pve_lxc_shutdown
+      failed_when: _pve_lxc_shutdown.rc not in (0, 255)
+      delegate_to: '{{ _pve_vm.node }}'
+      when: _pve_vm.force_stop

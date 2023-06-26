@@ -1,0 +1,105 @@
+---
+# Datacenter only security group 'pve' access and drop all other traffic to cluster
+# WebUI.
+pve_dc_firewall_rules:
+  - direction: 'GROUP'
+    action:    'pve'
+    comment:   'Allow pve security group access.'
+  - direction: 'IN'
+    action:    'DROP'
+    log:       'nolog'
+    comment:   'Drop all other traffic.'
+
+# Datacenter IP set definitions for firewall rules.
+pve_dc_firewall_ipset:
+  - name: 'cluster'
+    comment: 'pve servers'
+    hosts:
+      - {ip: '192.169.0.5',  comment: 'pm1'}
+      - {ip: '192.169.0.10', comment: 'pm2'}
+      - {ip: '192.169.0.15', comment: 'pm3'}
+      - {ip: '172.20.20.11', comment: 'pm1 cluster backbone network'}
+      - {ip: '172.20.20.12', comment: 'pm2 cluster backbone network'}
+      - {ip: '172.20.20.13', comment: 'pm3 cluster backbone network'}
+  - name: 'management'
+    comment: 'remote access'
+    hosts:
+      - {ip: '192.168.0.50', comment: 'desktop'}
+      - {ip: '192.168.0.51', comment: 'laptop'}
+      - {ip: '192.168.0.52', comment: 'wireless'}
+      - {ip: '192.168.0.53', comment: 'bastion'}
+
+# Datacenter firewall rules (these define all standard PVE services)
+#
+# Reference:
+# * https://pve.proxmox.com/pve-docs/pve-admin-guide.html#_ports_used_by_proxmox_ve
+pve_dc_firewall_group_rules:
+  - name: 'pve'
+    comment: 'pve hypervisor firewall'
+    rules:
+      - direction: 'IN'
+        action:    'ACCEPT'
+        source:    '+cluster'
+        proto:     'tcp'
+        dport:     '60000:60050'
+        log:       'nolog'
+        comment:   'Live Migrations'
+      - direction: 'IN'
+        action:    'ACCEPT'
+        source:    '+cluster'
+        proto:     'udp'
+        dport:     '5405:5412'
+        log:       'nolog'
+        comment:   'Corosync cluster traffic'
+      - direction: 'IN'
+        action:    'ACCEPT'
+        source:    '+management'
+        proto:     'tcp'
+        dport:     '8006'
+        log:       'nolog'
+        comment:   'Web Interface'
+      - direction: 'IN'
+        action:    'ACCEPT'
+        proto:     'tcp'
+        dport:     '5900:5999'
+        log:       'nolog'
+        comment:   'VNC Web Console websockets'
+      - direction: 'IN'
+        action:    'ACCEPT'
+        source:    '+cluster'
+        proto:     'tcp'
+        dport:     '85'
+        log:       'nolog'
+        comment:   'pvedaemon (listens 127.0.0.1:85) for REST API access'
+      - direction: 'IN'
+        action:    'ACCEPT'
+        source:    '+management'
+        proto:     'tcp'
+        dport:     '22'
+        log:       'nolog'
+        comment:   'SSH (management traffic)'
+      - direction: 'IN'
+        action:    'ACCEPT'
+        source:    '+cluster'
+        proto:     'tcp'
+        dport:     '22'
+        log:       'nolog'
+        comment:   'SSH (cluster traffic)'
+      - direction: 'IN'
+        action:    'ACCEPT'
+        proto:     'udp'
+        dport:     '111'
+        log:       'nolog'
+        comment:   'rpcbind (NFS services)'
+      - direction: 'IN'
+        action:    'ACCEPT'
+        proto:     'tcp'
+        dport:     '111'
+        log:       'nolog'
+        comment:   'rpcbind (NFS services)'
+      - direction: 'IN'
+        action:    'ACCEPT'
+        proto:     'tcp'
+        dport:     '3128'
+        log:       'nolog'
+        comment:   'spice proxy (client remote viewer)'

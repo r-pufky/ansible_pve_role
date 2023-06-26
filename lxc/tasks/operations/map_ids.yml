@@ -1,0 +1,41 @@
+---
+###############################################################################
+# Map LXC ID's to Cluster Host
+###############################################################################
+# ID's must be set in /etc/sub{uid,gid} before they can be successfully
+# mapped in the container config.
+#
+# Args:
+#   _pve_vm: dict parsed pve_{kvm,lxc} raw yaml values.
+#
+# Reference:
+# * https://pve.proxmox.com/pve-docs/pveam.1.html
+# * https://pve.proxmox.com/pve-docs/pct.1.html
+# * https://pve.proxmox.com/wiki/Unprivileged_LXC_containers
+# * https://pve.proxmox.com/pve-docs/pve-admin-guide.html
+
+- name: '{{ _pve_vm.vmid }} | mapping container uids (if needed)'
+  ansible.builtin.lineinfile:
+    path:   '/etc/subuid'
+    regexp: '^{{ item }}'
+    line:   '{{ item }}'
+    owner:  'root'
+    group:  'root'
+    mode:   0644
+    state:  'present'
+  loop: '{{ _pve_vm.lxc.meta.subuid }}'
+  when: _pve_vm.lxc.meta.subuid|length > 0
+  delegate_to: '{{ _pve_vm.node }}'
+
+- name: '{{ _pve_vm.vmid }} | mapping container gids (if needed)'
+  ansible.builtin.lineinfile:
+    path:   '/etc/subgid'
+    regexp: '^{{ item }}'
+    line:   '{{ item }}'
+    owner:  'root'
+    group:  'root'
+    mode:   0644
+    state:  'present'
+  loop: '{{ _pve_vm.lxc.meta.subgid }}'
+  when: _pve_vm.lxc.meta.subgid|length > 0
+  delegate_to: '{{ _pve_vm.node }}'

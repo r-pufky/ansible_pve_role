@@ -1,0 +1,27 @@
+###############################################################################
+# Example PVE Hosts
+###############################################################################
+# This represents a 3-node PVE cluster with one LXC and one KVM container.
+
+# Define **ALL** PVE cluster nodes under pve_nodes.
+[pve_nodes]
+pm1.example.com
+pm2.example.com
+pm3.example.com
+
+# Define your primary PVE cluster node.
+[pve_masters]
+pm1.example.com
+
+# Convience to filter all LXC hosts. (--tags lxc)
+[pve_lxc]
+xplex.example.com
+
+# Convience to filter all KVM hosts. (--tags kvm)
+[pve_kvm]
+vtest.example.com
+
+# Convience to filter all containers (--tags lxc,kvm)
+[pve_containers:children]
+pve_lxc
+pve_kvm

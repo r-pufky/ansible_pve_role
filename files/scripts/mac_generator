@@ -1,0 +1,20 @@
+#!/bin/bash
+#
+# Generate reproducible, unique MAC addresses for virtual machines.
+#
+# Generated addresses are:
+# * 02 leading byte signifying locally adminstrated MAC address.
+# * Reproducible based on input string (hostname).
+#
+# Reference:
+# * https://gitlab.com/wireshark/wireshark/-/raw/master/manuf
+# * https://serverfault.com/questions/299556/how-to-generate-a-random-mac-address-from-the-linux-command-line
+
+if [ -z ${1} ]; then
+  echo 'Generate reproducible unique MAC addresses for virtual machines.'
+  echo -e '\nUsage: ${0} [FQDN]\n'
+  exit 1
+else
+  echo ${1}|md5sum|sed 's/^\(..\)\(..\)\(..\)\(..\)\(..\).*$/02:\1:\2:\3:\4:\5/; s/\(.*\)/\U\1/'
+fi
+exit 0

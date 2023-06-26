@@ -1,0 +1,14 @@
+---
+- ansible.builtin.import_tasks: roles/pve/global_tasks/quorum.yml
+- ansible.builtin.import_tasks: roles/pve/global_tasks/subscription.yml
+- ansible.builtin.import_tasks: dc_options.yml
+- ansible.builtin.import_tasks: roles/pve/global_tasks/dns.yml
+- ansible.builtin.import_tasks: email.yml
+- ansible.builtin.import_tasks: dc_firewall.yml
+- ansible.builtin.import_tasks: nvidia_passthru.yml
+  when: pve_nvidia_passthru
+- ansible.builtin.include_tasks: cron.yml
+  vars:
+    name:   '{{ item.key }}'
+    config: '{{ item.value }}'
+  loop: '{{ pve_cron|default({})|dict2items }}'

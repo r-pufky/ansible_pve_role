@@ -1,0 +1,74 @@
+---
+###############################################################################
+# Destroy LXC Container
+###############################################################################
+# Destroy an LXC container and all related configurations, virtual disks.
+#
+# Hosts string will be split on commas, stripped of whitespace, and processed
+# per defined, validated host. This should be set on the command line, and
+# broken down before passed to delete.
+#
+# NOTE: This is the 'host.pve_lxc.hostname' setting.
+#
+# valid forms of pve_destroy_hosts:
+#   'xtest.example.com'
+#   'xtest.example.com,xtest2.example.com'
+#   ' xtest.example.com, xtest2.example.com '
+#
+# Exit codes:
+#   0: destroyed success.
+#   2: container does not exist to destroy.
+#
+# Args:
+#   destroy_host: string FQDN host defined in hosts file for container to
+#       be destroyed.
+#   pve_image_map: dict template mapping.
+#
+# Reference:
+# * https://pve.proxmox.com/pve-docs/pct.1.html
+
+- name: 'delete | validate selected host {{ destroy_host }}'
+  ansible.builtin.assert:
+    that:
+      - destroy_host is defined
+      - destroy_host in groups["all"]
+
+- name: 'delete | get host information {{ destroy_host }}'
+  ansible.builtin.set_fact:
+    _pve_destroy_host: '{{ hostvars[destroy_host] }}'
+
+- name: 'delete | lxc host detected and validated'
+  block:
+    - name: 'delete lxc | get container config'
+      lxc_config:
+        vmid:       '{{ _pve_destroy_host.pve_lxc.vmid }}'
+        node:       '{{ _pve_destroy_host.pve_lxc.node }}'
+        template:   '{{ pve_image_map[_pve_destroy_host.pve_lxc.template]|default(omit) }}'
+        force_stop: '{{ _pve_destroy_host.pve_lxc.force_stop|default(omit) }}'
+        config:     '{{ _pve_destroy_host.pve_lxc.config  }}'
+      register: _pve_destroy_config
+
+    - name: 'delete | DESTRUCTION WARNING'
+      ansible.builtin.debug:
+        msg: |
+          Manually halting execution for confirmation.
+
+            Container {{ _pve_destroy.vmid }}/{{ _pve_destroy.config.hostname }} will be DESTROYED
+
+              * All attached virtual disks will be deleted.
+              * All container pve configuration files will be deleted.
+              * NO mountpoints will be affected.
+              * Container will be removed.
+      when: pve_destroy_pause
+
+    - name: 'delete | pause until manually confirmed'
+      ansible.builtin.pause:
+        echo: false
+      when: pve_destroy_pause
+
+    - name: 'delete | deleting {{ _pve_destroy.vmid }}/{{ _pve_destroy.config.hostname }}'
+      ansible.builtin.command: 'pct destroy {{ _pve_destroy.vmid }} --force 1 --purge 1'
+      delegate_to: '{{ _pve_destroy.node }}'
+      register: _pve_destroy_results
+      failed_when: _pve_destroy_results.rc not in (0, 2)
+  when: _pve_destroy_host.pve_lxc is defined

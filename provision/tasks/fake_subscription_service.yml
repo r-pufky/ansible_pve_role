@@ -1,0 +1,57 @@
+---
+###############################################################################
+# Use Fake PVE Subscription Service
+###############################################################################
+# Run fake PVE subscription service to prevent registration popups. This does
+# NOT enable subcription-based updates.
+#
+# Provides a mechanism to disable pop-up subscription notices without needing
+# to modify the javascript itself on every update.
+#
+# The service is installed via a manual debian package install.
+#
+# Reference:
+# * https://github.com/Jamesits/pve-fake-subscription
+# * https://r-pufky.github.io/docs/virtualization/hypervisors/pve/index.html#disable-via-service
+
+- name: 'subscription | disable subscription key validation'
+  ansible.builtin.lineinfile:
+    path:   '/etc/hosts'
+    line:   '127.0.0.1 shop.maurer-it.com'
+    create: true
+    mode:   0644
+    state:  'present'
+
+- name: 'subscription | get release metadata'
+  ansible.builtin.uri:
+    url: 'https://api.github.com/repos/Jamesits/pve-fake-subscription/releases/latest'
+    method:         GET
+    return_content: true
+    status_code:    200
+    body_format:    json
+  register: _pve_subscription_metadata
+
+- name: 'subscription | find package name'
+  ansible.builtin.set_fact:
+    _pve_subscription_target:  '{{ _pve_subscription_metadata.json.tag_name[1:] }}'
+    _pve_subscription_package: '{{ item.name }}'
+    _pve_subscription_url:     '{{ item.browser_download_url }}'
+  loop: '{{ _pve_subscription_metadata.json.assets }}'
+  when: '".deb" in item.name'
+
+- name: 'subscription | determine installed package version'
+  ansible.builtin.package_facts:
+  no_log: true # all installed system packages.
+
+# Package will autoatically be upgraded if newer version install attempted.
+- name: 'subscription | install {{ _pve_subscription_target }}'
+  ansible.builtin.apt:
+    deb: '{{ _pve_subscription_url }}'
+  become: true
+  register: _pve_subscription_download
+  until: _pve_subscription_download is succeeded
+  retries: 5
+  delay: 2
+  when: |
+    not 'pve-fake-subscription' in ansible_facts.packages or
+    not _pve_subscription_target in ansible_facts.packages['pve-fake-subscription'][0]['version']

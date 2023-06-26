@@ -1,0 +1,311 @@
+---
+###############################################################################
+# LXC Configuration Template [host_vars, pve/lxc]
+###############################################################################
+# This should be copied and configured in host_vars/{HOST}/vars.
+#
+# All hosts with a template definition are automatically pulled into pve/lxc
+# tasks and matched to the specified cluster/node to be setup.
+#
+# For configuration format help:
+# * https://pve.proxmox.com/wiki/Manual:_pct.conf
+#
+# You can also setup the VM via the GUI and paste the resulting config file
+# into pve_lxc.config.
+#
+# Defaults here are example only.
+#
+# PVE 7 enabled nesting by default; Debian (all LXC containers, systemd 244+)
+# need to use:
+#
+#   features: nesting=1
+#
+# Systemd 244+ versions require nesting for the container to run smoothly.
+# Nesting should not present a security risk for an unprivileged container.
+# Expressions of this problem are systemd ssh not starting, long webui console
+# logins, etc (essentially anything systemd that is attempting to create its
+# own namespaces).
+#
+# Nesting allows mounting of the host /proc and /sys inside the container;
+# unprivileged containers run in their own user namespace, thus root inside the
+# container is only an unprivileged user on the host. Having access to /proc
+# and /sys is acceptable. Privileged containers do run as root on the host and
+# access to /proc and /sys can be quite problematic.
+#
+# STRONGLY suggest using unprivileged containers. Consider migrating to KVM for
+# privileged containers. If the OS inside the container does not need nesting
+# (distros not using systemd or pre systemd 244), a privileged container does
+# pose less of a risk.
+#
+# A mountpoint without mapping ID's will map to nobody/nobody and deny access
+# to root in the container. lxc.idmap is used to map container IDs to pve IDs.
+#
+# Reference:
+# * https://forum.proxmox.com/threads/upgraded-lxc-to-bullseye-console-extremely-slow.95552/#post-414794
+# * https://forum.proxmox.com/threads/solved-systemd-247-breaks-networking-in-lxc.80115/#post-417655
+# * https://forum.proxmox.com/threads/lxc-security-nesting.44726/
+# * https://old.reddit.com/r/Proxmox/comments/ph10mb/debian_11_lxc_login_delay/
+# * https://pve.proxmox.com/wiki/Unprivileged_LXC_containers
+# * https://github.com/ddimick/proxmox-lxc-idmapper
+#
+# Datatype: dict (default: {})
+# Special case:
+#   ###########################################################################
+#   # Container Definition
+#   ###########################################################################
+#   # Unique VM ID for the cluster. Required.
+#   #
+#   # Dataype: integer
+#   # Special case: Must be unique cluster wide. ID's lower than 100 are
+#   #     reserved for system use.
+#   vmid: 100
+#
+#   # Cluster node on the cluster to create container on. Required.
+#   #
+#   # Datatype: string
+#   # Special case: Use FQDN/IP for cluster node defined in Hosts.
+#   node: 'cluster-node.example.com'
+#
+#   # Template to create LXC container from. Required.
+#   #
+#   # Datatype: string (default: 'debian-bullseye')
+#   # Special case: Use template defined in 'pve_image_map'.
+#   template: 'debian-bullseye'
+#
+#   # Force shutdown if normal shutdown fails? Required.
+#   #
+#   # Datatype: boolean (default: true)
+#   # Special case: None
+#   force_stop: true
+#
+#   ###########################################################################
+#   # Firewall Configuration
+#   ###########################################################################
+#   # Configure firewall on the cluster node specifically for the container.
+#   #
+#   # Reference:
+#   # * https://pve.proxmox.com/pve-docs/chapter-pve-firewall.html#pve_firewall_vm_container_configuration
+#   #
+#   # Datatype: dict (default: {})
+#   # Special case:
+#   #   # Enable DHCP. Required.
+#   #   #
+#   #   # Datatype: boolean (default: true)
+#   #   # Special case: None
+#   #   dhcp: true
+#   #
+#   #   # Enable/disable firewall rules. Required.
+#   #   #
+#   #   # Datatype: boolean (default: false)
+#   #   # Special case: None
+#   #   enable: false
+#   #
+#   #   # Enable default IP filters. Required.
+#   #   #
+#   #   # Datatype: boolean (default: false)
+#   #   # Special case: None
+#   #   ipfilter: false
+#   #
+#   #   # Log level for incoming traffic. Required.
+#   #   #
+#   #   # Datatype: string (default: 'nolog')
+#   #   # Special case:
+#   #   # * alert
+#   #   # * crit
+#   #   # * debug
+#   #   # * emerg
+#   #   # * err
+#   #   # * info
+#   #   # * nolog (default)
+#   #   # * notice
+#   #   # * warning
+#   #   log_level_in: 'nolog'
+#   #
+#   #   # Log level for outgoing traffic. Required.
+#   #   #
+#   #   # Datatype: string (default: 'nolog')
+#   #   # Special case:
+#   #   # * alert
+#   #   # * crit
+#   #   # * debug
+#   #   # * emerg
+#   #   # * err
+#   #   # * info
+#   #   # * nolog (default)
+#   #   # * notice
+#   #   # * warning
+#   #   log_level_out: 'nolog'
+#   #
+#   #   # Enable/disable MAC address filter. Required.
+#   #   #
+#   #   # Datatype: boolean (default: true)
+#   #   # Special case: None
+#   #   macfilter: true
+#   #
+#   #   # Enable NDP (Neighbor Discovery Protocol). Required.
+#   #   #
+#   #   # Datatype: boolean (default: true)
+#   #   # Special case: None
+#   #   ndp: true
+#   #
+#   #   # Input policy. Required.
+#   #   #
+#   #   # Datatype: string (default: 'DROP')
+#   #   # Special case:
+#   #   # * ACCEPT
+#   #   # * REJECT
+#   #   # * DROP (default)
+#   #   policy_in: 'DROP'
+#   #
+#   #   # Output policy. Required.
+#   #   #
+#   #   # Datatype: string (default: 'ACCEPT')
+#   #   # Special case:
+#   #   # * ACCEPT (default)
+#   #   # * REJECT
+#   #   # * DROP
+#   #   policy_out: 'ACCEPT'
+#   #
+#   #   # Allow sending Router Advertisement. Required.
+#   #   #
+#   #   # Datatype: boolean (default: false)
+#   #   # Special case: None
+#   #   radv: false
+#   #
+#   #   # Firewall rules. Any undefined option is not used. Optional.
+#   #   #
+#   #   # Example:
+#   #   #   rules:
+#   #   #     - direction: 'IN'
+#   #   #       action:    'ACCEPT'
+#   #   #       source:    '+cluster'
+#   #   #       proto:     'udp'
+#   #   #       dport:     '5404:5405'
+#   #   #       log:       'nolog'
+#   #   #       comment:   'Corosync cluster traffic'
+#   #   #
+#   #   # Reference:
+#   #   # * https://pve.proxmox.com/pve-docs/chapter-pve-firewall.html#_firewall_rules
+#   #   # * https://www.iana.org/assignments/service-names-port-numbers/service-names-port-numbers.xhtml
+#   #   # * https://www.iana.org/assignments/protocol-numbers/protocol-numbers.xhtml
+#   #   # * https://www.iana.org/assignments/icmp-parameters/icmp-parameters.xhtml#icmp-parameters-types
+#   #   #
+#   #   # Datatype: list of vars (default: [])
+#   #   #   - direction: string 'IN','OUT' 'GROUP'. Default: 'IN'.
+#   #   #     macro:     string macro to use. Default '' (no macros).
+#   #   #     action:    string action 'ACCEPT','REJECT','DROP'. Default: 'ACCEPT'.
+#   #   #     source:    string source. {IP/CIDR/IPSet/IPAlias},range({IP}-{IP}).
+#   #   #     sport:     string source port. TCP/UDP port, may use service names in
+#   #   #         /etc/services. PORT/{SERVICE}/range({PORT}:{PORT},{PORT}:{PORT}).
+#   #   #     dest:      string destination. IP/CIDR/IPSet/IPAlias,range({IP}-{IP}).
+#   #   #     dport:     string destination port. TCP/UDP port, may use service names
+#   #   #         in /etc/services. PORT/{SERVICE}/range({PORT}:{PORT},{PORT}:{PORT}).
+#   #   #     proto:     string IP protocol. Use protcol names 'tcp','udp' or numbers
+#   #   #         in /etc/protocols.
+#   #   #     log:       string rule log level. 'alert','crit','debug','emerg','err',
+#   #   #         'info','nolog','notice','warning'.
+#   #   #     icmp_type: integer icmp type. Only used if proto is 'icmp'.
+#   #   #     iface:     string interface name.
+#   #   #     comment:   string description. Default: ''.
+#   #   # Special case: Security group inclusion rules use a special subset of vars:
+#   #   #     - direction: 'GROUP'
+#   #   #       action:    '{SECURITY GROUP NAME}'
+#   #   #       iface:     (optional)
+#   #   #       comment:   (optional)
+#   #   rules: []
+#   #
+#   #   # IP Set configuration. Optional.
+#   #   #
+#   #   # Example:
+#   #   #   ipset:
+#   #   #     - name:    'management'
+#   #   #       comment: 'remote access'
+#   #   #       hosts:
+#   #   #         - {ip: '192.168.0.80',  comment: 'desktop'}
+#   #   #         - {ip: '192.168.0.81',  comment: 'laptop'}
+#   #   #         - {ip: '192.168.0.40',  comment: 'phone'}
+#   #   #
+#   #   # Reference:
+#   #   # * https://pve.proxmox.com/pve-docs/chapter-pve-firewall.html#pve_firewall_ip_sets
+#   #   #
+#   #   # Datatype: list of dict (default: {})
+#   #   #   - name:      string IPSet name. Must be alphanumeric and - only.
+#   #   #     comment:   string description of the IPset. Default: ''.
+#   #   #     hosts:     list of dict containing IP's for IPset.
+#   #   #       ip:      string IP/CIDR address of host.
+#   #   #       comment: string description of the IP. Default: ''.
+#   #   # Special case: 'cluster' IPSet is automatically created from pve_node_ips and
+#   #   #     may be used in definitions.
+#   #   ipset: []
+#   #
+#   #   # IP Aliases associates IPs with a name. These may be used in source and dest
+#   #   # firewall rules. Optional.
+#   #   #
+#   #   # Reference:
+#   #   # * https://pve.proxmox.com/pve-docs/chapter-pve-firewall.html#pve_firewall_ip_aliases
+#   #   #
+#   #   # Datatype: list of dict (default: [])
+#   #   #   - name:    string firewall rule hostname.
+#   #   #     ip:      string IP address of the host.
+#   #   #     comment: string comment. Default: ''.
+#   #   # Special case: None
+#   #   ip_aliases: []
+#
+#   #########################################################################
+#   # LXC Raw Configuration
+#   #########################################################################
+#   # pct raw config definition -- as is from /etc/pve/lxc/VMID.conf
+#   #
+#   # DO NOT VERTICAL ALIGN OR YAML QUOTE. THIS IS A STRING, NOT YAML!
+#   #
+#   # Generate Unique virt MAC: roles/pve/files/scripts/mac_generator {FQDN}
+#   #
+#   # Reference:
+#   # * https://pve.proxmox.com/wiki/Manual:_pct.conf
+#   # * https://pve.proxmox.com/wiki/Linux_Container#pct_settings
+#   # * https://pve.proxmox.com/pve-docs/pct.1.html
+#   config: |
+#     # Any comments added in config will appear in the 'notes' field in pve,
+#     # and are processed as markdown by default.
+#     arch: amd64
+#     cores: 64
+#     hostname: lxc-vm-example
+#     memory: 127000
+#     mp0: mp=/d,/d
+#     net0: name=eth0,bridge=vmbr0,hwaddr=AA:BB:CC:DD:EE:FF,ip=dhcp,ip6=dhcp,tag=5,type=veth
+#     onboot: 1
+#     ostype: ubuntu
+#     nameserver: 10.9.9.2
+#     searchdomain: example.com
+#     unprivileged: 1
+#     features: nesting=1
+#     rootfs: local-lvm:vm-100-disk-0,size=50G
+#     startup: order=0
+#     swap: 512
+#     mp1: volume=/d/srv/acme/cert,mp=/etc/nginx-ssl,ro=1
+#     mp1: volume=/d/srv/ca/repo/chain,mp=/etc/nginx-ca,ro=1
+#     # map: uid/gid 0-699 (in ct) to host starting at 100000, so 0..699 (ct) 100000..100699 (host)
+#     lxc.idmap: u 0 100000 700
+#     lxc.idmap: g 0 100000 700
+#     # map: uid/gid (acme) 700 (in ct) to host 700, so 700 (ct) 700 (host)
+#     lxc.idmap: u 700 700 1
+#     lxc.idmap: g 700 700 1
+#     # map: uid/gid 701-65535 (in ct) to host starting at 100701, so 701..65535 (ct) 100701..165535 (host)
+#     lxc.idmap: u 701 100701 64834
+#     lxc.idmap: g 701 100701 64834
+#     # Passthru GPU.
+#     lxc.apparmor.profile: unconfined
+#     lxc.cgroup.devices.allow: a
+#     lxc.cap.drop:
+#     lxc.cgroup.devices.allow: c 195:* rwm
+#     lxc.cgroup.devices.allow: c 511:* rwm
+#     lxc.cgroup.devices.allow: c 226:* rwm
+#     lxc.cgroup.devices.allow: c 237:* rwm
+#     lxc.mount.entry: /dev/nvidia0 dev/nvidia0 none bind,optional,create=file
+#     lxc.mount.entry: /dev/nvidiactl dev/nvidiactl none bind,optional,create=file
+#     lxc.mount.entry: /dev/nvidia-uvm dev/nvidia-uvm none bind,optional,create=file
+#     lxc.mount.entry: /dev/nvidia-modeset dev/nvidia-modeset none bind,optional,create=file
+#     lxc.mount.entry: /dev/nvidia-uvm-tools dev/nvidia-uvm-tools none bind,optional,create=file
+#     lxc.mount.entry: /dev/dri dev/dri none bind,optional,create=dir
+#     lxc.mount.entry: /dev/nvidia-caps /dev/nvidia-caps none bind,optional,create=dir
+pve_lxc: {}

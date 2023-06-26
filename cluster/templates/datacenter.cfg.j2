@@ -1,0 +1,79 @@
+{%- if pve_dc_options_bwlimit|length > 0 %}
+bwlimit: {{ pve_dc_options_bwlimit }}
+{% endif %}
+
+{%- if pve_dc_options_console|length > 0 %}
+console: {{ pve_dc_options_console }}
+{% endif %}
+
+{%- if pve_dc_options_crs|length > 0 %}
+crs: {{ pve_dc_options_crs }}
+{% endif %}
+
+{%- if pve_dc_options_description|length > 0 %}
+description: {{ pve_dc_options_description }}
+{% endif %}
+
+{%- if pve_dc_options_email_from|length > 0 %}
+email_from: {{ pve_dc_options_email_from }}
+{% endif %}
+
+{%- if pve_dc_options_fencing|length > 0 %}
+fencing: {{ pve_dc_options_fencing }}
+{% endif %}
+
+{%- if pve_dc_options_ha|length > 0 %}
+ha: {{ pve_dc_options_ha }}
+{% endif %}
+
+{%- if pve_dc_options_http_proxy|length > 0 %}
+http_proxy: {{ pve_dc_options_http_proxy }}
+{% endif %}
+
+{%- if pve_dc_options_keyboard|length > 0 %}
+keyboard: {{ pve_dc_options_keyboard }}
+{% endif %}
+
+{%- if pve_dc_options_language|length > 0 %}
+language: {{ pve_dc_options_language }}
+{% endif %}
+
+{%- if pve_dc_options_mac_prefix|length > 0 %}
+mac_prefix: {{ pve_dc_options_mac_prefix }}
+{% endif %}
+
+{%- if pve_dc_options_max_workers|length > 0 %}
+max_workers: {{ pve_dc_options_max_workers }}
+{% endif %}
+
+{%- if pve_dc_options_migration|length > 0 %}
+migration: {{ pve_dc_options_migration }}
+{% endif %}
+
+{%- if pve_dc_options_next_id|length > 0 %}
+next-id: {{ pve_dc_options_next_id }}
+{% endif %}
+
+{%- if pve_dc_options_notify|length > 0 %}
+notify: {{ pve_dc_options_notify }}
+{% endif %}
+
+{%- if pve_dc_options_registered_tags|length > 0 %}
+registered-tags: {{ pve_dc_options_registered_tags }}
+{% endif %}
+
+{%- if pve_dc_options_tag_style|length > 0 %}
+tag-style: {{ pve_dc_options_tag_style }}
+{% endif %}
+
+{%- if pve_dc_options_u2f|length > 0 %}
+u2f: {{ pve_dc_options_u2f }}
+{% endif %}
+
+{%- if pve_dc_options_user_tag_access|length > 0 %}
+user-tag-access: {{ pve_dc_options_user_tag_access }}
+{% endif %}
+
+{%- if pve_dc_options_webauthn|length > 0 %}
+webauthn: {{ pve_dc_options_webauthn }}
+{% endif %}

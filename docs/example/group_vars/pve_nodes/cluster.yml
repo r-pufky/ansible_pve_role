@@ -1,0 +1,17 @@
+---
+###############################################################################
+# Cluster Setting Configuration (group_vars)
+###############################################################################
+# All cluster-based conifgurable settings.
+
+pve_cluster_name: 'pm'
+
+# IP's are required to do cold start turnups of cluster nodes, potentially
+# without DNS resolution.
+pve_master_node_ip: '192.168.0.5'
+
+# All cluster node ips.
+pve_node_ips:
+  - '192.168.0.5'
+  - '192.168.0.10'
+  - '192.168.0.15'

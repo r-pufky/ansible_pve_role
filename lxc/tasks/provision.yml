@@ -1,0 +1,74 @@
+---
+###############################################################################
+# Provision LXC Containers
+###############################################################################
+# Provisioning will:
+# * Create container if it does not exist (including template download).
+# * Determine if configuration changes are needed.
+# * Stop container if changes needed.
+# * Apply config/rootfs resize if changes needed.
+# * Start container.
+#
+# /etc/pve uses pmxcfs (a database mounted via fuse). It's POSIX like, but does
+# not support specific operations. This causes:
+# * Temp files from ansible to fail as it crosses filesystem boundaries
+#   (ansible creates a temp file then attempts an atomic move; fails across
+#    filesystems).
+# * Permissions are auto-applied based on path; no need to set user/group/perms
+#   on files in /etc/pve.
+# * A Quorate MUST exist to enable writes (auto sync'ed to rest of cluster).
+#
+# Args:
+#   _pve_vm: dict parsed pve_{kvm,lxc} raw yaml values.
+#   _pve_vm_exists: boolean true if the VM already exists.
+#
+# Reference:
+# * https://pve.proxmox.com/pve-docs/chapter-pmxcfs.html
+# * https://forum.proxmox.com/threads/unable-to-modify-anything-under-etc-pve.10284/
+# * https://pve.proxmox.com/pve-docs/pve-admin-guide.html
+
+- ansible.builtin.include_tasks: config.yml
+- ansible.builtin.include_tasks: create.yml
+  when: not _pve_vm_exists
+- ansible.builtin.import_tasks: roles/pve/global_tasks/lxc_kvm_firewall.yml
+
+# PVE stores config in any order (especially after WebUI interactions) ansible
+# check_mode assumes same order. Write config and confirm that actual changes
+# are detected, not just line shifts.
+- name: '{{ _pve_vm.vmid }} | stage configuration for validation'
+  ansible.builtin.template:
+    src:   'lxc.conf.j2'
+    dest:  '/tmp/lxc.conf'
+    force: true
+    owner: 'root'
+    group: 'www-data'
+    mode:  0644
+  changed_when: false
+  delegate_to: '{{ _pve_vm.node }}'
+
+# Diff exit codes:
+#   0: diff files are the same
+#   1: diff files are different
+- name: '{{ _pve_vm.vmid }} | check for configuration changes (ignoring order)'
+  ansible.builtin.shell: 'diff <(sort /tmp/lxc.conf) <(sort /etc/pve/lxc/{{ _pve_vm.vmid }}.conf)'
+  args:
+    executable: '/bin/bash'
+  register: _pve_vm_config_check
+  changed_when: false
+  failed_when: _pve_vm_config_check.rc > 1
+  delegate_to: '{{ _pve_vm.node }}'
+
+- name: 'lxc | configuration changes required'
+  block:
+    - ansible.builtin.include_tasks: operations/shutdown.yml
+    - ansible.builtin.include_tasks: reconfigure.yml
+    - ansible.builtin.include_tasks: operations/start.yml
+  when: _pve_vm_config_check.rc == 1
+
+- name: '{{ _pve_vm.vmid }} | cleanup' # noqa ignore-errors ok if missing
+  ansible.builtin.file:
+    path:  '/tmp/lxc.conf'
+    state: 'absent'
+  changed_when: false
+  ignore_errors: true
+  delegate_to: '{{ _pve_vm.node }}'

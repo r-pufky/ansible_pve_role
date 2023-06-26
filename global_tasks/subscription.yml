@@ -1,0 +1,83 @@
+---
+###############################################################################
+# PVE Subscription Management
+###############################################################################
+# Manage subscription keys and subscriptions repositories.
+#
+# Enterprise subscription repo requires subscription key and will cause apt to
+# fail. Don't update apt cache until enterprise repo is removed.
+#
+# A valid subscription **MUST** be present to use the subscription repositories
+# otherwise apt will hard fail and the role will fail apply.
+#
+# Subscriptions are managed on each cluster node with pvesubscription. Best
+# guess on exit codes:
+# 0: success
+# 255: failure
+#
+# Args:
+#   pve_subscription_keys: dict containing key/value pairs of host/key; empty
+#       disables subscription.
+#
+# Reference:
+# * https://forum.proxmox.com/threads/subscription-key-update-via-command-line.51287/
+# * https://shop.proxmox.com/index.php?rp=/knowledgebase/4/How-do-I-upload-my-Proxmox-VE-subcription-key-to-my-Proxmox-VE-host.html
+# * https://r-pufky.github.io/docs/virtualization/hypervisors/pve/index.html#enable-automatic-non-subscription-updates
+
+- name: 'global task | configure subscriptions'
+  block:
+    - name: 'global task | set subscription key for {{ inventory_hostname }}'
+      ansible.builtin.shell: 'set -o pipefail && pvesubscription set "{{ pve_subscription_keys[inventory_hostname] }}"'
+      args:
+        executable: '/bin/bash'
+      changed_when: false
+      failed_when: _pve_subscription.rc > 0
+      register: _pve_subscription
+
+    - name: 'global task | update subscription'
+      ansible.builtin.shell: 'set -o pipefail && pvesubscription update'
+      args:
+        executable: '/bin/bash'
+      changed_when: false
+      failed_when: _pve_subscription_update.rc > 0
+      register: _pve_subscription_update
+
+    - name: 'packages | remove non-subscription repo'
+      ansible.builtin.apt_repository:
+        repo:  'deb https://enterprise.proxmox.com/debian/pve {{ pve_debian_base }} pve-no-subscription'
+        state: 'absent'
+        update_cache: true
+
+    - name: 'packages | add enterprise (subscription) repo'
+      ansible.builtin.apt_repository:
+        repo:     'deb http://download.proxmox.com/debian/pve {{ pve_debian_base }} pve-enterprise'
+        filename: 'pve_non_subscription'
+        state:    'present'
+        update_cache: true
+
+  when: pve_subscription_keys|length > 0
+
+- name: 'global task | configure non-subscriptions'
+  block:
+    - name: 'global task | remove subscription key for {{ inventory_hostname }}'
+      ansible.builtin.shell: 'set -o pipefail && pvesubscription delete'
+      args:
+        executable: '/bin/bash'
+      changed_when: false
+      failed_when:  _pve_non_subscription.rc > 0
+      register: _pve_non_subscription
+
+    - name: 'packages | remove enterprise (subscription) repo'
+      ansible.builtin.apt_repository:
+        repo:  'deb https://enterprise.proxmox.com/debian/pve {{ pve_debian_base }} pve-enterprise'
+        state: 'absent'
+        update_cache: true
+
+    - name: 'packages | add non-subscription repo'
+      ansible.builtin.apt_repository:
+        repo:     'deb http://download.proxmox.com/debian/pve {{ pve_debian_base }} pve-no-subscription'
+        filename: 'pve_non_subscription'
+        state:    'present'
+        update_cache: true
+
+  when: pve_subscription_keys|length == 0

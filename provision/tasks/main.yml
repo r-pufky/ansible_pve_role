@@ -1,0 +1,17 @@
+---
+# NOTE(upgrade): Major version upgrade checklist.
+#    * nvidia base driver version
+#    * lxc/kvm variable changes (see module_utils full test data)
+#    * datacenter, firewall, pve vars (compare to templates)
+#    * ports and default port number changes.
+- ansible.builtin.import_tasks: roles/pve/global_tasks/subscription.yml
+- ansible.builtin.import_tasks: packages.yml
+- ansible.builtin.import_tasks: pve_root.yml
+- ansible.builtin.import_tasks: hardware_virtualization.yml
+- ansible.builtin.import_tasks: fake_subscription_service.yml
+  when: pve_remove_subscription_notification
+- ansible.builtin.import_tasks: network.yml
+- ansible.builtin.import_tasks: roles/pve/global_tasks/dns.yml
+- ansible.builtin.import_tasks: create_cluster.yml
+- ansible.builtin.include_tasks: fail2ban.yml
+  when: pve_install_fail2ban_rules

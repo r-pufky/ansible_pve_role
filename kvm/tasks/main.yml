@@ -1,0 +1,40 @@
+---
+# TODO(role): rework cloudinit role to generate a 'cloud template' for the
+#             release, then use that to createa KVM instance FROM, instead of
+#             directly creating the role. Update templates to use the key name
+#             for the cloud template image. This should allow for the creation
+#             of a vm using cloud init command line options(?)
+#             https://norocketscience.at/deploy-proxmox-virtual-machines-using-cloud-init/
+# TODO(role): Cannot use sshkeys passed through the config: -> conf file -> qm
+#             command, it is not encoded properly and results in a urlencode
+#             error. see ssh_keys.yml file for further explanation.
+#
+#             Approach: get cloud init working first WITHOUT sshkeys, then
+#             figure out what needs to change to make them work.
+#
+#             https://github.com/pallets/jinja/issues/515
+#             https://github.com/Telmate/terraform-provider-proxmox/issues/133
+# TODO(role): Current working notes until first KVM image.
+#
+#   Creating VM:
+#     QEMU guest agent enabled (virtio)
+#     BIOS OVMF(UEFI)
+#     Q35 (enables PCIe, fallback to i440fx if needed)
+#     Memory: Set minimum and ballooning maximum
+#     apt install qemu-guest-agent
+
+- ansible.builtin.import_tasks: roles/pve/global_tasks/quorum.yml
+
+- ansible.builtin.include_tasks: operations/delete.yml
+  when: pve_destroy_hosts is defined
+  loop: '{{ pve_destroy_hosts|split(",")|map("trim") }}'
+  loop_control:
+    loop_var: destroy_host
+
+- name: 'provision KVM instances'
+  ansible.builtin.include_tasks: provision.yml
+  when: host.value.pve_kvm is defined
+  loop: '{{ hostvars|dict2items|flatten(levels=1) }}'
+  loop_control:
+    loop_var: host
+  #no_log: true # host_vars includes passwords

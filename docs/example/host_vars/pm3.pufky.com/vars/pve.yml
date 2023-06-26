@@ -1,0 +1,43 @@
+---
+# This node has 2 ethernet interfaces. A virtual bridge is connected to each
+# adaptor. This enables future changes to PVE cluster/container networking that
+# is not dependant on the physical card.
+#
+# The public network (vmbr0) will host containers, and the private network
+# (vmbr1) will host the cluster backbone network for syncing cluster
+# information and container migrations.
+#
+# Adaptor names will be different for each system. Fake values have been
+# added for addresses.
+pve_interfaces: |
+  auto lo
+  iface lo inet loopback
+
+  auto enp1s0
+  iface enp1s0 inet manual
+
+  auto enp2s0f0
+  iface enp2s0f0 inet manual
+
+  auto vmbr0
+  iface vmbr0 inet static
+        address 12.168.0.15/24
+        gateway 12.168.0.1
+        hwaddress  AA:BB:CC:CC:CC:CC
+        bridge-ports enp2s0f0
+        bridge-stp off
+        bridge-fd 0
+        bridge-vlan-aware yes
+        bridge-vids 2-4094
+  #hosted kvm/lxc (mac: pm3.example.com).
+
+  auto vmbr1
+  iface vmbr1 inet static
+        address 172.20.20.13/24
+        hwaddress AA:BB:CC:CC:CC:DD
+        bridge-ports enp1s0
+        bridge-stp off
+        bridge-fd 0
+        bridge-vlan-aware yes
+        bridge-vids 20
+  #cluster network (mac: pm3-cluster.example.com).

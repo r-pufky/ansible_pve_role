@@ -1,0 +1,390 @@
+---
+###############################################################################
+# Container/Virtual Machine Firewall [host_vars, pve/lxc|pve/kvm]
+###############################################################################
+# Configured per instance in the respective 'pve_lxc' and 'pve_kvm' variables.
+# See lxc.yml and kvm.yml.
+
+###############################################################################
+# Datacenter Firewall [group_vars, pve/cluster]
+###############################################################################
+# Controls the datacenter firewall. See examples in docs/examples for working
+# firewall configurations to start with if you are stuck.
+#
+# Reference:
+# * https://pve.proxmox.com/pve-docs/chapter-pve-firewall.html
+# * https://pve.proxmox.com/wiki/Firewall
+
+# Enable ebtables (ethernet bridge frame tables) rules cluster wide? Required.
+#
+# Datatype: boolean (default: true)
+# Special case: None
+pve_dc_firewall_ebtables: true
+
+# Enable DC firewall cluster wide? Reuired.
+#
+# Datatype: boolean (default: true)
+# Special case: None
+pve_dc_firewall_enable: true
+
+# Enable log rate limiting? Required.
+#
+# Datatype: boolean (default: true)
+# Special case: None
+pve_dc_firewall_log_ratelimit_enable: true
+
+# Number of messages always logged before the rate is applied. Required.
+#
+# Datatype: integer (default: 5)
+# Special case: None
+pve_dc_firewall_log_ratelimit_burst: 5
+
+# Frequency with which the burst bucket gets refilled. Required.
+#
+# Datatype: string (default: '1/second')
+# Special case: valid periods are as follows.
+# * second
+# * minute
+# * hour
+# * day
+pve_dc_firewall_log_ratelimit_rate: '1/second'
+
+# Inbound policy. Required.
+#
+# Datatype: string (default: 'ACCEPT')
+# Special case:
+# * ACCEPT (default)
+# * REJECT
+# * DROP
+pve_dc_firewall_policy_in: 'ACCEPT'
+
+# Outbound policy. Required.
+#
+# Datatype: string (default: 'ACCEPT')
+# Special case:
+# * ACCEPT (default)
+# * REJECT
+# * DROP
+pve_dc_firewall_policy_out: 'ACCEPT'
+
+# Firewall rules. Any undefined option is not used. Optional.
+#
+# Example:
+#   pve_dc_firewall_rules:
+#     - direction: 'IN'
+#       action:    'ACCEPT'
+#       source:    '+cluster'
+#       proto:     'udp'
+#       dport:     '5404:5405'
+#       log:       'nolog'
+#       comment:   'Corosync cluster traffic'
+#
+# Reference:
+# * https://pve.proxmox.com/pve-docs/chapter-pve-firewall.html#_firewall_rules
+# * https://www.iana.org/assignments/service-names-port-numbers/service-names-port-numbers.xhtml
+# * https://www.iana.org/assignments/protocol-numbers/protocol-numbers.xhtml
+# * https://www.iana.org/assignments/icmp-parameters/icmp-parameters.xhtml#icmp-parameters-types
+#
+# Datatype: list of vars (default: [])
+#   - direction: string 'IN','OUT' 'GROUP'. Default: 'IN'.
+#     macro:     string macro to use. Default '' (no macros).
+#     action:    string action 'ACCEPT','REJECT','DROP'. Default: 'ACCEPT'.
+#     source:    string source. {IP/CIDR/IPSet/IPAlias},range({IP}-{IP}).
+#     sport:     string source port. TCP/UDP port, may use service names in
+#         /etc/services. PORT/{SERVICE}/range({PORT}:{PORT},{PORT}:{PORT}).
+#     dest:      string destination. IP/CIDR/IPSet/IPAlias,range({IP}-{IP}).
+#     dport:     string destination port. TCP/UDP port, may use service names
+#         in /etc/services. PORT/{SERVICE}/range({PORT}:{PORT},{PORT}:{PORT}).
+#     proto:     string IP protocol. Use protcol names 'tcp','udp' or numbers
+#         in /etc/protocols.
+#     log:       string rule log level. 'alert','crit','debug','emerg','err',
+#         'info','nolog','notice','warning'.
+#     icmp_type: integer icmp type. Only used if proto is 'icmp'.
+#     iface:     string interface name.
+#     comment:   string description. Default: ''.
+# Special case: Security group inclusion rules use a special subset of vars:
+#     - direction: 'GROUP'
+#       action:    '{SECURITY GROUP NAME}'
+#       iface:     (optional)
+#       comment:   (optional)
+pve_dc_firewall_rules: []
+
+# IP Set configuration. Optional.
+#
+# Example:
+#   pve_dc_firewall_ipset:
+#     - name:    'management'
+#       comment: 'remote access'
+#       hosts:
+#         - {ip: '192.168.0.80',  comment: 'desktop'}
+#         - {ip: '192.168.0.81',  comment: 'laptop'}
+#         - {ip: '192.168.0.40',  comment: 'phone'}
+#
+# Reference:
+# * https://pve.proxmox.com/pve-docs/chapter-pve-firewall.html#pve_firewall_ip_sets
+#
+# Datatype: list of dict (default: {})
+#   - name:      string IPSet name. Must be alphanumeric and - only.
+#     comment:   string description of the IPset. Default: ''.
+#     hosts:     list of dict containing IP's for IPset.
+#       ip:      string IP/CIDR address of host.
+#       comment: string description of the IP. Default: ''.
+# Special case: 'cluster' IPSet is automatically created from pve_node_ips and
+#     may be used in definitions.
+pve_dc_firewall_ipset: []
+
+# Security group firewall rules. Any undefined option is not used. Required.
+#
+# Example:
+#   pve_dc_firewall_group_rules:
+#     - name: 'pve'
+#       comment: 'pve hypervisor firewall'
+#       rules:
+#         - direction: 'IN'
+#           action:    'ACCEPT'
+#           source:    '+cluster'
+#           proto:     'tcp'
+#           dport:     '60000:60050'
+#           log:       'nolog'
+#           comment:   'Live Migrations'
+#
+# Reference:
+# * https://www.iana.org/assignments/service-names-port-numbers/service-names-port-numbers.xhtml
+# * https://www.iana.org/assignments/protocol-numbers/protocol-numbers.xhtml
+# * https://www.iana.org/assignments/icmp-parameters/icmp-parameters.xhtml#icmp-parameters-types
+#
+# Datatype: list of dict (default: [])
+# Special case: None
+# pve_dc_firewall_group_rules:
+#   - name: string security group name.
+#     comment: string description. Default: ''.
+#     rules:
+#       - direction: string 'IN'/'OUT'/'GROUP'. Default: 'IN'.
+#         macro: string macro to use. Default '' (no macros).
+#         action: string action 'ACCEPT', 'REJECT', 'DROP'. Default: 'ACCEPT'.
+#         source: string source. IP/CIDR/IPSet/IPAlias,range({IP}-{IP}).
+#         sport: string source port. TCP/UDP port, may use service names in
+#             /etc/services. PORT/{SERVICE}/range({PORT}:{PORT},{PORT}:{PORT}).
+#         dest: string destination. IP/CIDR/IPSet/IPAlias,range({IP}-{IP}).
+#         dport: string destination port. TCP/UDP port, may use service names in
+#             /etc/services. PORT/{SERVICE}/range({PORT}:{PORT},{PORT}:{PORT}).
+#         proto: string IP protocol. Use protcol names 'tcp', 'udp' or numbers in
+#             /etc/protocols.
+#         log: string rule log level. 'alert', 'crit', 'debug', 'emerg', 'err',
+#             'info', 'nolog', 'notice', 'warning'.
+#         icmp_type: int icmp type. Only used if proto is 'icmp'.
+#         iface: string interface name.
+#         comment: string description. Default: ''.
+pve_dc_firewall_group_rules: []
+
+# IP Aliases associates IPs with a name. These may be used in source and dest
+# firewall rules. Optional.
+#
+# Reference:
+# * https://pve.proxmox.com/pve-docs/chapter-pve-firewall.html#pve_firewall_ip_aliases
+#
+# Datatype: list of dict (default: [])
+#   - name:    string firewall rule hostname.
+#     ip:      string IP address of the host.
+#     comment: string comment. Default: ''.
+# Special case: None
+pve_dc_firewall_ip_aliases: []
+
+###############################################################################
+# Cluster Node Firewall [host_vars, pve/cluster]
+###############################################################################
+# Cluster node specific firewall configuration. Specific host rules always
+# override datacenter rules if both are defined.
+#
+# Reference:
+# * https://pve.proxmox.com/pve-docs/chapter-pve-firewall.html#pve_firewall_host_specific_configuration
+# * https://pve.proxmox.com/wiki/Firewall
+
+# Enable DC firewall on cluster node? Required.
+#
+# Datatype: boolean (default: true)
+# Special case: None
+pve_dc_firewall_host_enable: true
+
+# Log level for incoming traffic. Required.
+#
+# Datatype: string (default: 'nolog')
+# Special case:
+# * alert
+# * crit
+# * debug
+# * emerg
+# * err
+# * info
+# * nolog (default)
+# * notice
+# * warning
+pve_dc_firewall_host_log_level_in: 'nolog'
+
+# Log level for outgoing traffic. Required.
+#
+# Datatype: string (default: 'nolog')
+# Special case:
+# * alert
+# * crit
+# * debug
+# * emerg
+# * err
+# * info
+# * nolog (default)
+# * notice
+# * warning
+pve_dc_firewall_host_log_level_out: 'nolog'
+
+# Enable logging of conntrack information. Required.
+#
+# Datatype: boolean (default: false)
+# Special case: None
+pve_dc_firewall_host_log_nf_conntrack: false
+
+# Enable NDP (Neighbor Discovery Protocol). Required.
+#
+# Datatype: boolean (default: true)
+# Special case: None
+pve_dc_firewall_host_ndp: true
+
+# Allow invalid packets on connection tracking. Required.
+#
+# Datatype: boolean (default: false)
+# Special case: None
+pve_dc_firewall_host_nf_conntrack_allow_invalid: false
+
+# Enable conntrack helpers for specific protocols. Required.
+#
+# Datatype: string (default: '' (disabled))
+# Special case:
+# * amanda
+# * ftp
+# * irc
+# * netbios-ns
+# * pptp
+# * sane
+# * sip
+# * snmp
+# * tftp
+pve_dc_firewall_host_nf_conntrack_helpers: ''
+
+# Maximum number of tracked connections. Required.
+#
+# Datatype: integer (default: 262144)
+# Special case: range between 32768 to max integer.
+pve_dc_firewall_host_nf_conntrack_max: 262144
+
+# Conntrack established timeout. Required.
+#
+# Datatype: integer (default: 432000)
+# Special case: range between 7875 to max integer.
+pve_dc_firewall_host_nf_conntrack_tcp_timeout_established: 432000
+
+# Conntrack syn recv timeout. Required.
+#
+# Datatype: integer (default: 60)
+# Special case: range between 30 to 60.
+pve_dc_firewall_host_nf_conntrack_tcp_timeout_syn_recv: 60
+
+# Enable SMURFS filter. Required.
+#
+# Datatype: boolean (default: true)
+# Special case: None
+pve_dc_firewall_host_nosmurfs: true
+
+# Enable synflood protection. Required.
+#
+# Datatype: boolean (default: false)
+# Special case: None
+pve_dc_firewall_host_protection_synflood: false
+
+# Synflood protection rate burst by IP source. Required.
+#
+# Datatype: integer (default: 1000)
+# Special case: None
+pve_dc_firewall_host_protection_synflood_burst: 1000
+
+# Synflood protection rate syn/sec by IP source. Required.
+#
+# Datatype: integer (default: 200)
+# Special case: None
+pve_dc_firewall_host_protection_synflood_rate: 200
+
+# Log level for SMURFS filter. Required.
+#
+# Datatype: string (default: 'nolog')
+# Special case:
+# * alert
+# * crit
+# * debug
+# * emerg
+# * err
+# * info
+# * nolog (default)
+# * notice
+# * warning
+pve_dc_firewall_host_smurf_log_level: 'nolog'
+
+# Log level for illegal tcp flags filter. Required.
+#
+# Datatype: string (default: 'nolog')
+# Special case:
+# * alert
+# * crit
+# * debug
+# * emerg
+# * err
+# * info
+# * nolog (default)
+# * notice
+# * warning
+pve_dc_firewall_host_tcp_flags_log_level: 'nolog'
+
+# Filter illegal combinations of TCP flags. Required.
+#
+# Datatype: boolean (default: false)
+# Special case: None
+pve_dc_firewall_host_tcpflags: false
+
+# Node Firewall rules. Any undefined option is not used. Optional.
+#
+# Example:
+#   pve_dc_firewall_host_rules:
+#     - direction: 'IN'
+#       action:    'ACCEPT'
+#       source:    '+cluster'
+#       proto:     'udp'
+#       dport:     '5404:5405'
+#       log:       'nolog'
+#       comment:   'Corosync cluster traffic'
+#
+# Reference:
+# * https://pve.proxmox.com/pve-docs/chapter-pve-firewall.html#_firewall_rules
+# * https://www.iana.org/assignments/service-names-port-numbers/service-names-port-numbers.xhtml
+# * https://www.iana.org/assignments/protocol-numbers/protocol-numbers.xhtml
+# * https://www.iana.org/assignments/icmp-parameters/icmp-parameters.xhtml#icmp-parameters-types
+#
+# Datatype: list of vars (default: [])
+#   - direction: string 'IN','OUT' 'GROUP'. Default: 'IN'.
+#     macro:     string macro to use. Default '' (no macros).
+#     action:    string action 'ACCEPT','REJECT','DROP'. Default: 'ACCEPT'.
+#     source:    string source. {IP/CIDR/IPSet/IPAlias},range({IP}-{IP}).
+#     sport:     string source port. TCP/UDP port, may use service names in
+#         /etc/services. PORT/{SERVICE}/range({PORT}:{PORT},{PORT}:{PORT}).
+#     dest:      string destination. IP/CIDR/IPSet/IPAlias,range({IP}-{IP}).
+#     dport:     string destination port. TCP/UDP port, may use service names
+#         in /etc/services. PORT/{SERVICE}/range({PORT}:{PORT},{PORT}:{PORT}).
+#     proto:     string IP protocol. Use protcol names 'tcp','udp' or numbers
+#         in /etc/protocols.
+#     log:       string rule log level. 'alert','crit','debug','emerg','err',
+#         'info','nolog','notice','warning'.
+#     icmp_type: integer icmp type. Only used if proto is 'icmp'.
+#     iface:     string interface name.
+#     comment:   string description. Default: ''.
+# Special case: Security group inclusion rules use a special subset of vars:
+#     - direction: 'GROUP'
+#       action:    '{SECURITY GROUP NAME}'
+#       iface:     (optional)
+#       comment:   (optional)
+pve_dc_firewall_host_rules: []

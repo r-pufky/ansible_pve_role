@@ -1,0 +1,23 @@
+---
+###############################################################################
+# Proxmox (PVE) Role Configuration
+###############################################################################
+pve_root_password: '{{ vault_pve_root_password }}'
+
+# Use internal DNS server as primary and fallback to cloudflare; for all
+# cluster nodes.
+pve_dns: |
+  search example.com
+  nameserver 192.168.0.250
+  nameserver 1.1.1.1
+  nameserver 1.0.0.1
+
+# Immediately execute container deletion command without pausing.
+pve_destroy_pause: false
+
+# Set the container SSH public key to the ansible public key, enabling ansible
+# management of the containers after they are turned up with the pve/lxc or
+# pve/kvm roles.
+pve_vm_ssh_public_key: '{{ vault_ansible_authorized_keys }}'
+
+pve_vm_initial_password: '{{ vault_pve_vm_initial_password }}'

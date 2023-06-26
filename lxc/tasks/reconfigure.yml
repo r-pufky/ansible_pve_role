@@ -1,0 +1,39 @@
+---
+###############################################################################
+# Reconfigure LXC Container
+###############################################################################
+# Reconfigures an LXC container with new disk, configuration, and ID mapping if
+# changed.
+#
+# Assumes the container has already been stopped.
+#
+# /etc/pve uses pmxcfs (a database mounted via fuse). It's POSIX like, but does
+# not support specific operations. This causes:
+# * Temp files from ansible to fail as it crosses filesystem boundaries
+#   (ansible creates a temp file then attempts an atomic move; fails across
+#    filesystems).
+# * Permissions are auto-applied based on path; no need to set user/group/perms
+#   on files in /etc/pve.
+# * A Quorate MUST exist to enable writes (auto sync'ed to rest of cluster).
+#
+# Requires:
+#   _pve_vm: dict parsed pve_{kvm,lxc} raw yaml values.
+#
+# Reference:
+# * https://pve.proxmox.com/pve-docs/pve-admin-guide.html
+# * https://pve.proxmox.com/pve-docs/chapter-pmxcfs.html
+# * https://forum.proxmox.com/threads/unable-to-modify-anything-under-etc-pve.10284/
+
+- name: '{{ _pve_vm.vmid }} | resize root disk if needed'
+  ansible.builtin.include_tasks: operations/resize.yml
+  vars:
+    disk: '{{ _pve_vm.root.disk }}'
+    size: '{{ _pve_vm.root.size }}'
+
+- name: '{{ _pve_vm.vmid }} | map container ids (if needed)'
+  ansible.builtin.include_tasks: operations/map_ids.yml
+
+# mv preserves permissions (not allowed on pmxcfs). cp & rm instead.
+- name: '{{ _pve_vm.vmid }} | apply configuration changes' # noqa no-changed-when always execute
+  ansible.builtin.shell: 'cp /tmp/lxc.conf /etc/pve/lxc/{{ _pve_vm.vmid }}.conf && rm /tmp/lxc.conf'
+  delegate_to: '{{ _pve_vm.node }}'

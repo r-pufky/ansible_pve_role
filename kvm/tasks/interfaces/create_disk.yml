@@ -1,0 +1,61 @@
+---
+###############################################################################
+# Create KVM Disk
+###############################################################################
+# Check if KVM disk exists and resize if needed. If the disk does not exist,
+# create it with provided options.
+#
+# Exit codes captured:
+#   0: disk created
+#   5: disk exists
+#
+# Args:
+#   _pve_vm: dict kvm_config parse options.
+#   disk: list of dicts containing disk information (from _pve_vm.disks).
+#
+# Reference:
+# * https://pve.proxmox.com/pve-docs/pvesm.1.html
+# * https://pve.proxmox.com/pve-docs/pvesh.1.html
+# * https://pve.proxmox.com/pve-docs/pve-admin-guide.html
+
+- name: '{{ _pve_vm.vmid }} disk | processing disk {{ disk.fullname }}'
+  ansible.builtin.set_fact:
+    _pve_disk_exists: false
+
+- name: '{{ _pve_vm.vmid }} disk | list cluster/node disks on {{ disk.storage }}'
+  ansible.builtin.command: 'pvesh get /nodes/{{ _pve_vm.node.split(".")[0] }}/storage/{{ disk.storage }}/content --output-format json'
+  register: _pve_disk_list
+  changed_when: false
+  delegate_to: '{{ _pve_vm.node }}'
+
+- name: '{{ _pve_vm.vmid }} disk | check if {{ disk.fullname }} exists on cluster/node/{{ disk.storage }}'
+  ansible.builtin.set_fact:
+    _pve_disk_exists: true
+  when: disk.file == node_disk.volid
+  loop: '{{ _pve_disk_list.stdout|from_json }}'
+  loop_control:
+    loop_var: node_disk
+
+- ansible.builtin.include_tasks: roles/pve/kvm/tasks/operations/resize.yml
+  vars:
+    mountpoint: '{{ disk.disk }}'
+    size: '{{ disk.size }}'
+  when: _pve_disk_exists
+
+- name: '{{ _pve_vm.vmid }} disk | creating disk {{ disk.name }}.{{ disk.format }}'
+  ansible.builtin.command: 'pvesm alloc {{ disk.storage }} {{ _pve_vm.vmid }} {{ disk.fullname }} {{ disk.size }} -format {{ disk.format }}'
+  register: _pve_store_list
+  changed_when: false
+  failed_when: _pve_store_list.rc not in (0, 5)
+  when: disk.format|length > 0 and not _pve_disk_exists
+  delegate_to: '{{ _pve_vm.node }}'
+
+- name: '{{ _pve_vm.vmid }} disk | creating disk {{ disk.name }}'
+  ansible.builtin.command: 'pvesm alloc {{ disk.storage }} {{ _pve_vm.vmid }} {{ disk.fullname }} {{ disk.size }}'
+  register: _pve_store_list
+  changed_when: false
+  failed_when: _pve_store_list.rc not in (0, 5)
+  when: disk.format|length == 0 and not _pve_disk_exists
+  delegate_to: '{{ _pve_vm.node }}'
+
+- ansible.builtin.import_tasks: roles/pve/kvm/tasks/operations/rescan.yml

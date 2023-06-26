@@ -1,0 +1,13 @@
+---
+###############################################################################
+# Datacenter Site Options [group_vars, pve/cluster]
+###############################################################################
+
+# Specify email address to send notification from.
+pve_dc_options_email_from: 'root@localhost'
+
+# Default keybord layout for vnc server.
+pve_dc_options_keyboard: 'en-us'
+
+# Use secure migrations on the cluster backbone network.
+pve_dc_options_migration: 'secure,network=172.20.20.0/24'

@@ -1,0 +1,33 @@
+---
+pve_kvm:
+  vmid:       251
+  node:       'pm3.example.com'
+  template:   'debian-bullseye-cloudinit-xz'
+  force_stop: true
+  cloud_init: 'local-lvm'
+  config: |
+    acpi: 1
+    agent: enabled=1,fstrim_cloned_disks=1,type=virtio
+    cores: 4
+    sockets: 1
+    cpu: cputype=kvm64,hidden=1
+    autostart: 1
+    balloon: 1024
+    memory: 2048
+    bios: ovmf
+    boot: order=scsi0,ide0
+    kvm: 1
+    machine: q35
+    name: vtest.example.com
+    nameserver: 192.168.0.250
+    searchdomain: example.com
+    net0: virtio=BB:BB:CC:DD:EE:FF,bridge=vmbr0,firewall=1
+    ipconfig0: gw=192.168.0.1,ip=192.168.0.150/24
+    onboot: 1
+    ostype: l26
+    scsi0: local-lvm:vm-251-disk-0,size=4G
+    scsihw: virtio-scsi-pci
+    startup: order=251
+    ciuser: test
+    cipassword: test
+    citype: nocloud

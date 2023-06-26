@@ -1,0 +1,17 @@
+---
+###############################################################################
+# Recan Cluster/node Disks
+###############################################################################
+# After change operations, rescan and refresh cluster metadata on disk
+# information.
+#
+# Args:
+#   _pve_vm: dict kvm_config parse options.
+#
+# Reference:
+# * https://pve.proxmox.com/pve-docs/qm.1.html
+# * https://pve.proxmox.com/pve-docs/pve-admin-guide.html
+
+- name: '{{ _pve_vm.vmid }} disk | rescan cluster disk metadata' # noqa no-changed-when always execute
+  ansible.builtin.command: 'qm rescan'
+  delegate_to: '{{ _pve_vm.node }}'
