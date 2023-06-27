@@ -210,7 +210,7 @@ applying either of these roles **without** limiting to specific hosts and
 `pve_masters` will (re)configure **all** hosts that define LXC/KVM containers
 in `host_vars`.
 
-[host_vars/xplex.example.com/lxc.yml](https://github.com/r-pufky/ansible_pve/blob/main/docs/example/host_vars/xplex.example.com/lxc.yml).
+See [host_vars/xplex.example.com/lxc.yml](https://github.com/r-pufky/ansible_pve/blob/main/docs/example/host_vars/xplex.example.com/vars/lxc.yml).
 ```yaml
 - name: 'pve create lxc containers'
   hosts:  'pve_masters'
@@ -224,7 +224,7 @@ in `host_vars`.
     - 'lxc'
 ```
 
-[host_vars/vtest.example.com/kvm.yml](https://github.com/r-pufky/ansible_pve/blob/main/docs/example/host_vars/vtest.example.com/kvm.yml).
+See [host_vars/vtest.example.com/kvm.yml](https://github.com/r-pufky/ansible_pve/blob/main/docs/example/host_vars/vtest.example.com/vars/kvm.yml).
 ```yaml
 - name: 'pve create kvm containers'
   hosts:  'pve_masters'
