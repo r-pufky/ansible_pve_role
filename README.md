@@ -10,10 +10,9 @@ for setting up role.
 
 Role version matches PVE release version with an extra specifier for role
 revisions. Applying role that is mis-matched to PVE version is **NOT**
-supported. e.g.:
+supported:
 
-PVE: `7.4`
-r_pufky.pve: `7.4.0`
+PVE: `7.4` -> r_pufky.pve: `7.4.X`
 
 ## Role Variables
 Read **all** default files and the **examples** docs. Settings have been throughly documented for
@@ -52,8 +51,7 @@ Manually install PVE to the bare-metal machine and prep for provisioning:
 4. If removing and re-adding a cluster node see:
     https://pve.proxmox.com/wiki/Cluster_Manager
 
-See [Hosts](https://github.com/r-pufky/ansible_pve/blob/main/docs/example/hosts)
-for defining hosts for role use.
+See [Hosts](https://github.com/r-pufky/ansible_pve/blob/main/docs/example/hosts) for defining hosts for role use.
 
 ## Cold Start (Ansible Deployment Machine)
 Cold starting a PVE cluster mean turning up a PVE cluster with no pre-existing
@@ -212,6 +210,7 @@ applying either of these roles **without** limiting to specific hosts and
 `pve_masters` will (re)configure **all** hosts that define LXC/KVM containers
 in `host_vars`.
 
+[host_vars/xplex.example.com/lxc.yml](https://github.com/r-pufky/ansible_pve/blob/main/docs/example/host_vars/xplex.example.com/lxc.yml).
 ```yaml
 - name: 'pve create lxc containers'
   hosts:  'pve_masters'
@@ -224,6 +223,7 @@ in `host_vars`.
   tags:
     - 'lxc'
 
+[host_vars/vtest.example.com/kvm.yml](https://github.com/r-pufky/ansible_pve/blob/main/docs/example/host_vars/vtest.example.com/kvm.yml).
 - name: 'pve create kvm containers'
   hosts:  'pve_masters'
   become: true
@@ -259,6 +259,13 @@ ansible-playbook site.yml --tags lxc,init,db --limit xdb.example.com,pve_masters
 Rebuild a container by destroying it and re-creating it from scratch:
 ```bash
 ansible-playbook site.yml --tags lxc,init,db --limit xdb.example.com,pve_masters -v -e 'pve_destroy_hosts="xdb.example.com"'
+```
+
+Build a PVE cluster and deploy base containers.
+```bash
+ansible-playbook site.yml --tags pve_cold_start --limit {CLUSTER HOSTS}*.example.com --ask-pass
+ansible-playbook site.yml --tags pve_provision,pve_cluster --limit pve_nodes -v
+ansible-playbook site.yml --tags lxc,kvm --limit pve_masters -v
 ```
 
 ## Issues
