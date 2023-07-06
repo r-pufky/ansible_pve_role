@@ -5,7 +5,6 @@
 # Default required packages for PVE install.
 
 pve_core_packages:
-  - 'unattended-upgrades' # automatic updates.
   - 'sudo'                # sudo usage with ansible.
   - 'vim'                 # sane minimal editor.
   - 'python3-pexpect'     # password expect usage on cluster setup.
